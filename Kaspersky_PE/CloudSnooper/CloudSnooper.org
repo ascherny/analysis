@@ -1,0 +1,14 @@
+DLL hijacking / binary planting - вид уязвимости когда dll подгружаются без абсолютных путей
+Зависимости разрешаются путем поиска в _определенной последовательности_ если вредоносный dll разместить в этом порядке до загрузки ожидаемого, то он будет исполнен
+
+
+Последовательность поиска
+• KnownDLLs list.
+• The directory from which the application was started.
+• 32-bit System directory (C:\Windows\System32).
+• 16-bit System directory (C: IWindows\System).
+• Windows directory (C:\Windows).
+• The current directory.
+• Other directories in the PATH environment variable.
+
+Изучение загрузки библиотек на примере notepad.exe:

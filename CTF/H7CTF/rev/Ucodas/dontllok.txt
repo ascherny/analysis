@@ -1,0 +1,39 @@
+sudoku = [
+    [8,6,7,2,0,0,0,0,5],[0,0,9,0,3,8,0,0,0],[0,0,3,0,0,0,2,0,0],
+    [0,2,0,0,0,4,0,0,0],[9,0,0,5,0,2,0,0,7],[0,0,0,8,0,0,0,6,0],
+    [0,0,8,0,0,0,5,0,0],[0,0,0,6,8,0,7,0,0],[5,0,0,0,0,1,6,2,8],
+]
+
+def valid(g,r,c,n):
+    if n in g[r]: return False
+    if any(g[x][c]==n for x in range(9)): return False
+    br, bc = 3*(r//3),3*(c//3)
+    return all(g[x][y]!=n for x in range(br,br+3) for y in range(bc,bc+3))
+
+def solve(g):
+    for r in range(9):
+        for c in range(9):
+            if g[r][c]==0:
+                for n in range(1,10):
+                    if valid(g,r,c,n):
+                        g[r][c]=n
+                        if solve(g): return True
+                        g[r][c]=0
+                return False
+    return True
+
+import copy
+g=copy.deepcopy(sudoku)
+if solve(g):
+    zeros = sorted(((i,row.count(0)) for i,row in enumerate(sudoku)), key=lambda x:x[1])
+    rows = [int(''.join(map(str,g[i]))) for i,_ in zeros]
+
+    v10=[811,206,196,618,449,527,998,514,312,315,238,495,176,718,802,430,705,327,383,941,864,721,797,1014,643,409,615,849,154,230,526,437,589,1005,512,367,314,238,417]
+    v9=[]
+    for num in rows:
+        v9.extend([num//1000000, (num//1000)%1000, num%1000])
+
+    flag=''.join(chr(v10[i]^v9[i%27]) for i in range(len(v10)))
+    print(flag)
+else:
+    print("No solution found!")

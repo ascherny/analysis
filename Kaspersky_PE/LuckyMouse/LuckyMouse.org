@@ -1,0 +1,204 @@
+#+title: LuckyMouse
+
+
+* Идентификация файла
+** Цель:
+- определить и зафиксировать информацию о файле
+- получить известную информацию об угрозе из открытых источников
+        SHA256
+        Размер
+        Имя файла
+** Действия:
+- certutil -hashfile sample.exe SHA256
+    PS C: \Users\Hakcer\Desktop\HyperBro\unp> certutil -hashfile .\12e1f50d7c9cf546c90545588bc369fa90e03f2370883e7befd87e4d50
+    ebf0df SHA256
+    SHA256 hash of . \12e1f50d7c9cf546c90545588bc369fa90e03f2370883e7befd87e4d50ebf0df:
+    12e1f50d7c9cf546c90545588bc369fa90e03f2370883e7befd87e4d50ebf0df
+    CertUtil: -hashfile command completed successfully.
+- Анализ файла в Hiew
+   Файл выглядит как PE, но в strings находим .sfx
+   Меняем раширение на .zip и находим вложенные .exe, .dll, conf, .pdf
+- Анализ вложенного dll
+
+* Hex анализ :heiw:basics:
+** Цель:
+ - Определить тип файла, форматы, возможно маскировку
+
+** Действия:
+В первую очередь смотрим заголовки - есть mz dos stub pe - кандидат на .exe
+F8 + F7: список импортов .dll
+Alt+F6: список строк в файле, F9 - фильтр
+Проверяем строки в файле и находим там .sfx - можно поменять расширение на .zip и открыть архив
+Находим внутри exe
+- bin.config
+- vfhost. exe
+- VFTRACE. dll
+Также смотрим новый .exe, его строки и сертификаты
+
+* Disasm Анализ: :ida:basics:dllmain:
+** Цель
+** Действия
+Смотрим внутренний dll:
+shift+f11:=libraries -> видим mssdk win7, можно сделать вывод о назначении .exe/dll
+shift+f5=signatures -> видим vc32rtf и vcseh.sig
+смотрим vc32rtf -> пкм apply new signature
+
+Таким образом можно увидеть сигнатуры применяемых бибилиотек и сделать выводы о природе файла
+В данном случае идет анализ .dll который имеет стандартный dllmain
+    #+begin_src cpp
+    BOOL WINAPI DllMain(s
+    HINSTANCE hinstDLL,
+    DWORD fdwReason,
+    LPVOID lpvReserved
+    );
+    #+end_src
+Видим дизасм с проверкой на fdwReason not null
+    #+begin_src asm
+    push ebp
+    mov ebp, esp
+    cmp [ebp,fdwReason], 1
+    jnz short loc some_loc
+    #+end_src
+DllMain вызывается при добавлении DLL в процесс/выгрузке DLL, создании/завершении потока
+fdwReason отвечат за тип события вызова DllMain
+    #+begin_src c
+    #define DLL_PROCESS_DETACH  0
+    #define DLL_PROCESS_ATTACH  1
+    #define DLL_THREAD_ATTACH   2
+    #define DLL_THREAD_DETACH   3
+    #+end_src
+Соответственно в нашем случае это проверка на добавление DLL
+#+begin_src asm
+.text:100011C0 55                push ebp ; Сохраняем bp
+.text:100011C1 8B EC             mov ebp, esp ; Создаем stack frame
+.text: 100011C3 83 7D 0C 01      cmp[ebp+fdwReason], 1 ; Сравницваем fdwReason и 1 (PROCESS_ATTACH)
+.text:100011C7 75 0A             jnz short ReasonNot1 ; Переход на выход
+.text:100011C9 8B 45 08          mov eax, [ebp+hinstDLL] ; Кладем первый аргумент DllMain на стек
+.text:100011CC 50                push eax ; hLibModule      ; на стек для вызова функции
+push esi
+mov  esi, ds:GetTickCount
+push edi
+call esi ; GetTickCount
+mov edi, eax ; First tick count
+             ; CODE XREF: DLLMain(x,x,x)+1CIj
+call esi ; GetTickCount
+sub  eax, edi
+cmp  eax, 2000
+jb   short wait_cycle
+mov  ecx, offset loc_1000178B
+mov  esi, offset dword_10001000
+sub  ecx, esi
+push 0
+pop  edx
+jz   short loc_100017FD
+.text:100011D3
+.text:100011D3      ReasonNot1 ; Выход
+.text:100011D3 B8 01 00 00 00    mov eax, 1
+.text:100011D8 5D                pop ebp
+.text:100011D9 C2 OC 00          retn 0Ch
+#+end_src
+Аргументы DLLMain:
+#+begin_src cpp
+DllMain(
+    HINSTANCE hinstDLL,  // [ebp+8]
+    DWORD     fdwReason, // [ebp+0Ch]
+    LPVOID    lpReserved // [ebp+10h]
+)
+#+end_src
+В KRE туториале после проверки на fdwReason = 1 идет два вызова функции GetTickCount результат которых вычитыается и идет сравенение пока разница не будет > 2
+Предположительно это цикл ожидания которые запускает основной код с задержкой для маскировки автоматической проверки (Как работаеют автоматические проверки? Это проверка в рантайме каких-то начальных потоков?)
+В моем сеспле нет этой проверки но вместо этого идет вызов DisableThreadLibraryCalls
+TODO: Зачем отключаем вызов dllmain для процессов и что за функция которую мы назвали pathfunc
+*** DLLMain Справка
+DllMain это стандартная функция которая вызыватеся в случаях:
+| Name               | Event                   | fdwReason |
+| ------------------ | ----------------------- | --------- |
+| DLL_PROCESS_ATTACH | DLL загрузили в процесс |         1 |
+| DLL_THREAD_ATTACH  | Создался новый поток    |         2 |
+| DLL_THREAD_DETACH  | Поток завершился        |         3 |
+| DLL_PROCESS_DETACH | DLL выгружается         |         0 |
+|                    |                         |           |
+DllMain выполняется внутри Loader Lock.
+Внутри нелязя выполнять
+LoadLibrary
+FreeLibrary
+CreateProcess
+CreateThread
+
+Когда процесс вызывает:
+
+#+begin_src c
+LoadLibrary("test.dll");
+#+end_src
+
+Windows loader делает:
+
+Мапит DLL в память
+Заполняет Import Table
+Вызывает TLS callbacks
+Вызывает DllMain(DLL_PROCESS_ATTACH)
+Возвращает handle
+
+*** DisableThreadLibraryCalls Спарвка
+Отключает вызов DLLMain для событий
+DLL_THREAD_ATTACH
+DLL_THREAD_DETACH
+** Tips
+Подгрузка DLL хороший кандидат на место с malware кодом
+- выполняется автоматически
+- не нужен явный вызов
+- работает при LoadLibrary injection
+Типичный паттерн:
+#+begin_src c
+if (fdwReason == DLL_PROCESS_ATTACH) {
+    payload();
+}
+#+end_src
+DllMain — это:
+callback от Windows loaderа
+** Разобраться
+*** PDB файлы :qm:
+- При открытии внешнего и внутреннего .exe в IDA мы получаем предупреждние:
+    Load PDB file
+    The input file was linked with debug information stored here:
+    C:\VF\GPO\5.5.10.101\output\Win32\Release\bin\vf_host.pdb
+    Do you want to look for this file at the specified path and the Microsoft Symbol Server?
+    Load types
+    Load names
+    Yes No
+Что можно из него вынести?
+*** FLIRT и runtime :qm:
+- FLIRT signature и голубые рантайм функции в IDA
+*** Уровень оптимизации :qm:
+- Проверка может быть двух видов, почему и в чем разница
+
+ 1:
+  mov eax, [esp+fwdReason]
+  dec eax
+  jnz short loc some_loc
+ 2:
+  push ebp
+  mov ebp, esp
+  cmp [ebp,fdwReason], 1
+  jnz short loc some_loc
+ Разницы в 1: и 2: нет, но разница в уровне оптимизации, стоит ли обращать на такие моменты внимание? Что можно сказать о файле из этого?
+
+** Расхождение с KRE
+#+begin_src asm
+push esi
+mov  esi, ds:GetTickCount
+push edi
+call esi ; GetTickCount
+mov edi, eax ; First tick count
+             ; CODE XREF: DLLMain(x,x,x)+1CIj
+call esi ; GetTickCount
+sub  eax, edi
+cmp  eax, 2000
+jb   short wait_cycle
+mov  ecx, offset loc_1000178B
+mov  esi, offset dword_10001000
+sub  ecx, esi
+push 0
+pop  edx
+jz   short loc_100017FD
+#+end_src

