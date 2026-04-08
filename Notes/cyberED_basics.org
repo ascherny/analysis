@@ -1,37 +1,5 @@
 #+title: Basicis_cyberED
 
-* Header
-    #+begin_src cpp
-    /* chacha_core performs 20 rounds of Chacha on the input words in
-    ,* linput| and writes the 64 output bytes to loutput|. */
-    static void chacha20_core(chacha_buf *output, const u32 input[16])
-    {
-    u32 x[16];
-    int i;
-    DECLARE_IS_ENDIAN;
-
-    memcpy(x, input, sizeof(x));
-
-    for (i = 20; i > 0; i = 2) {
-        QUARTERROUND(0, 4, 8, 12);
-        QUARTERROUND(1, 5, 9, 13);
-        QUARTERROUND(2, 6, 10, 14);
-        QUARTERROUND(3, 7, 11, 15);
-        QUARTERROUND(0, 5, 10, 15);
-        QUARTERROUND(1, 6, 11, 12);
-        QUARTERROUND(2, 7, 8, 13);
-        QUARTERROUND(3, 4, 9, 14);
-    }
-    if (IS_LITTLE_ENDIAN) {
-        for (i = 0; i < 16; ++i)
-            output->u[i] = x[i] + input[i];
-    } else {
-        for (i = 0; i < 16; ++i)
-        U32T08_LITTLE(output->c + 4 * i, (x[i] + input[i]));
-    }
-    }
-    #+end_src
-
 * Структура кода :basics:reverse:
 - Комментарии
 - Сигнатуры функций
@@ -40,6 +8,20 @@
 - Макросы
 - Синтаксис
 
+* Структура программы :basics:reverse:
+** Программа это структурированный контейнер которой состоит из
+  - Заголовков
+  - Секций
+  - Машинного кода
+  - Таблиц импорта
+  - Ресурсов
+** Заголовки
+Информация для загрущика о типе файла, адресах, размерах, точках входа
+** Секции
+- .text содержит исполняемый код программы
+- .data содержит инициализированные данные - глобальные переменные
+- .rodata содержит строки и константы
+- .bss содержит неинициализированные данные, место под рантайм инициализацию
 
 * Полезные заметки :notes:
 ** ChaCha :crypto:
@@ -70,3 +52,14 @@ static uint rotl32(uint x, int n)
     return x << n | (x >> (-n & 31));
 }
 #+end_src
+
+* Библиография :books:
+"Вскрытие покажет! Практический анализ вредоносного ПО" - Сикорски М.
+"Understanding Assembly Language" ("Понимание языка ассемблера") - Денис Юричев
+"The Ghidra Book" и "The IDA Pro Book" - Игл Крис
+
+* Ссылки :urls:
+ - [[https://github.com/corkami/pics?tab=readme-ov-file][Бинарные постеры]]
+
+* Задачи :task:
+- Парсер основных структур исполняемых файлов
