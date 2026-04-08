@@ -1,0 +1,72 @@
+#+title: Basicis_cyberED
+
+* Header
+    #+begin_src cpp
+    /* chacha_core performs 20 rounds of Chacha on the input words in
+    ,* linput| and writes the 64 output bytes to loutput|. */
+    static void chacha20_core(chacha_buf *output, const u32 input[16])
+    {
+    u32 x[16];
+    int i;
+    DECLARE_IS_ENDIAN;
+
+    memcpy(x, input, sizeof(x));
+
+    for (i = 20; i > 0; i = 2) {
+        QUARTERROUND(0, 4, 8, 12);
+        QUARTERROUND(1, 5, 9, 13);
+        QUARTERROUND(2, 6, 10, 14);
+        QUARTERROUND(3, 7, 11, 15);
+        QUARTERROUND(0, 5, 10, 15);
+        QUARTERROUND(1, 6, 11, 12);
+        QUARTERROUND(2, 7, 8, 13);
+        QUARTERROUND(3, 4, 9, 14);
+    }
+    if (IS_LITTLE_ENDIAN) {
+        for (i = 0; i < 16; ++i)
+            output->u[i] = x[i] + input[i];
+    } else {
+        for (i = 0; i < 16; ++i)
+        U32T08_LITTLE(output->c + 4 * i, (x[i] + input[i]));
+    }
+    }
+    #+end_src
+
+* Структура кода :basics:reverse:
+- Комментарии
+- Сигнатуры функций
+- Функции библиотек
+- Локальные переменные
+- Макросы
+- Синтаксис
+
+
+* Полезные заметки :notes:
+** ChaCha :crypto:
+Элементы:
+- key 256 битный ключ
+- counter 32 битный счетчик
+- nonce 96 битное число
+- round обычно 20 или 8
+
+  Алгоритм содержит операции:
+  - сложение по модулю 2 ^^ 32
+  - побитовое сложение по модулю 2
+  - циклические сдвиги в лево
+Эти операции состовляют quarterRound
+Это операция которая принимает массив из 16 32-разрядных unsigned int и набор 4 32-разрядных чисел
+Числа обозначаем a b c d
+#+begin_src csharp
+static void quarterRound(ref uint[16] x, int a, int b, int c, int d)
+{
+    x[a] += x[b]; x[d] = rotl32(x[d] ^ x[a], 16);
+    x[c] += x[d]; x[b] = rotl32(x[b] ^ x[c], 12);
+    x[a] += x[b]; x[d] = rotl32(x[d] ^ x[a],  8);
+    x[c] += x[d]; x[b] = rotl32(x[b] ^ x[c],  7);
+}
+
+static uint rotl32(uint x, int n)
+{
+    return x << n | (x >> (-n & 31));
+}
+#+end_src
