@@ -1,0 +1,48 @@
+#+begin_src asm
+entry:
+    ;Пролог;
+        push    rbp
+        mov     rbp, rsp
+    ;Пролог;
+    ;4 переменные по 4б;
+        mov     dword ptr [rbp - 4], 0 ; A
+        mov     dword ptr [rbp - 8], 0 ; B
+        mov     dword ptr [rbp - 12], 2 ; C
+        mov     dword ptr [rbp - 16], 0 ; D
+    ;4 переменные по 4б;
+.LBB0_1:
+        cmp     dword ptr [rbp - 16], 20 ; if D > 20 => out
+        jge     .LBB0_4
+                                          ; else
+        mov     eax, dword ptr [rbp - 8] ; eax <- c
+        add     eax, 1 ; eax = B + 1
+        mov     dword ptr [rbp - 8], eax ; eax -> b
+
+        mov     eax, dword ptr [rbp - 12] ; eax <- C
+        imul    eax, dword ptr [rbp - 8] ; eax <- C * B
+        mov     dword ptr [rbp - 8], eax ; eax -> B
+
+        mov     eax, dword ptr [rbp - 16] ;  eax <- D
+        add     eax, 1 ; eax = D + 1
+        mov     dword ptr [rbp - 16], eax ; eax -> D
+        jmp     .LBB0_1 ; loop until B >= 20
+.LBB0_4:
+    ;Эпилог;
+        mov     eax, dword ptr [rbp - 4] ; кладем результат функции в eax
+        pop     rbp
+        ret
+    ;Эпилог;
+#+end_src
+Почему ret a если он не используется?
+#+begin_src c
+int func() {
+  int a = 0
+  int b = 0
+  int c = 2
+
+  for (int d = 0; d < 20; d++) {
+    b += 1;
+    c *= b;
+  }
+}
+#+end_src

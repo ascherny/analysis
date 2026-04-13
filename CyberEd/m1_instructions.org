@@ -1,0 +1,16 @@
+#+title: M1 Instructions
+
+* Инструкция к инструкциям :asm:basics:
+
+r - операнд может быть регистром
+m - адрес в памяти
+XX - размер операнда
+
+** Операции
+| Операция            | x86            | ARM                       | RISC-V                         |
+| Скопировать r1 → r2 | mov r2, r1     | mov x2, x1 (alias)        | addi x2, x1, 0                 |
+| Push register       | push eax       | stp x29, x30, [sp, #-16]! | addi sp, sp, -8``sd x1, 0(sp)  |
+| Push multiple       | pusha (legacy) | stp x1, x2, [sp, #-16]!   | Нужно делать руками            |
+| Pop register        | pop eax        | ldp x29, x30, [sp], #16   | ld x1, 0(sp) \n addi sp, sp, 8 |
+| Pop multiple        | popa (legacy)  | ldp x1, x2, [sp], #16     | Нужно делать руками            |
+|                     |                |                           |                                |
