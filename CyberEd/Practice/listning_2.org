@@ -1,0 +1,24 @@
+#+title: Listning 2
+
+#+begin_src asm
+mov     dword ptr [rbp - 4], 0
+mov     dword ptr [rbp - 8], 15
+mov     dword ptr [rbp - 12], 4
+mov     dword ptr [rbp - 16], 4919
+mov     eax, dword ptr [rbp - 8]
+imul    ecx, dword ptr [rbp - 12], 10
+add     eax, ecx
+mov     dword ptr [rbp - 20], eax
+mov     eax, dword ptr [rbp - 20]
+#+end_src
+
+#+begin_src c
+int main() {
+  int a = 0;
+  int b = 15;
+  int c = 4;
+  int d = 4919;
+  int e = b + (c*10);
+  return e;
+}
+#+end_src

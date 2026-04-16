@@ -1,0 +1,95 @@
+#+title: Practice_1
+
+* Base_reverse_ASM :basics:asm:ARM:
+
+#+begin_src c
+#include "stdio.h"
+
+int main(int argc, char** argv){
+  puts("Hello world");
+  return 0;
+}
+
+/* int main(int argc, char *argv[]) { ... } */
+/* int main(int argc, char **argv) { ... } */
+
+#+end_src
+* ARM Ликбез :basics:ARM:
+ X0-X7 - аргументы, как rdi, rsi, rdx ...
+ X0 - return value (rax)
+ X29 - Frame pointer (rbp)
+ X30 - Link registr - адрес возврата, в x86 rip после call
+#+begin_src asm
+EXPORT _main
+_main
+var_14          = -0x14 ;
+var_10          = -0x10 ;
+var_8           = -8    ; Оффесты относительно X29 ~ [rbp-0x14] ...
+var_4           = -4    ;
+var_s0          =  0    ;
+SUB             SP, SP, #0x30 ; Выделение стека SP = SP - 0x30 (48) ~ sub rsp, 0x30
+STP             X29, X30, [SP,#0x20+var_s0] ; Пролог функции, сохраняем старый X29 и X30 в SP + 0x20, SP + 0x28 на стек
+ADD             X29, SP, #0x20 ; X29 = SP + 0x20 в регистр
+MOV             W8, #0 ; W8 - временный регистр
+STR             W8, [SP,#0x20+var_14]
+STUR            WZR, [X29,#var_4]
+STUR            W0, [X29,#var_8]
+STR             X1, [SP,#0x20+var_10]
+ADRL            X0, aHelloWorld ; "Hello world"
+BL              _puts
+LDR             W0, [SP,#0x20+var_14]
+LDP             X29, X30, [SP,#0x20+var_s0]
+ADD             SP, SP, #0x30 ; '0'
+RET
+#+end_src
+
+* Ida hotkeys :basics:Ida:
+
+- Rename: N
+- Change type: Y
+- X-ref: X
+
+** Local type :reverse:Ida:type:
+Local Types (аналог Data Type Manager в Ghidra)
+
+Открыть: Shift + F1
+или: View → Open subviews → Local Types
+
+*** Создание нового типа
+Через C-подобный синтаксис
+В окне Local Types:
+#+begin_src c
+struct my_struct {
+    int a;
+    char b;
+    int c;
+};
+
+#+end_src
+
+*** Применение типа
+- К переменной / адресу: Y (“Set type”)
+
+Пример:
+#+begin_src c
+my_struct *ptr;
+#+end_src
+
+- К структуре в памяти: T → выбрать struct
+или: Alt + Q  (create struct instance)
+
+- Редактирование структур: Shift + F9  (Structures)
+добавление полей
+изменение offset
+переименование
+
+- Типы функций: Y → задать сигнатуру
+
+Пример:
+#+begin_src c
+int func(int a, char b);
+#+end_src
+
+- Импорт типов
+Из заголовков: File → Load file → Parse C header
+или: Edit → Plugins → C parser
