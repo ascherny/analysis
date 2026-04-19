@@ -1,0 +1,254 @@
+#+title: M1 Patterns
+
+* Базовые конструкции :asm:basics:pattern:
+** if
+#+begin_src c
+void some_func() {
+    // ...
+    int k = 0;
+    int x = 4;
+    if(x % 2 == 0)
+        k++;
+    // ...
+}
+
+#+end_src
+*** x86
+#+begin_src asm
+some_func:
+        push    rbp
+        mov     rbp, rsp
+        mov     DWORD PTR [rbp-4], 0
+        mov     DWORD PTR [rbp-8], 4
+        mov     eax, DWORD PTR [rbp-8]
+        and     eax, 1
+        test    eax, eax
+        jne     .L3
+        add     DWORD PTR [rbp-4], 1
+.L3:
+        nop
+        pop     rbp
+        ret
+#+end_src
+
+В eax значение по смещению rbp-8 это x
+x % 2 == 0 ~ and eax, 1 + test eax, eax
+в bin любое четное число заканчивается на 0
+x...{0,1} and 0...1 = 0...{0,1}
+
+Получается мы видим проверку на четность and eax, 1 и паттерн if ~ test eax, eax + jump condition
+
+*** ASM
+#+begin_src asm
+        sub     sp, sp, #16
+        mov     w0, 33
+        str     w0, [sp, 12]
+        ldr     w0, [sp, 12]
+        and     w0, w0, 1
+        cmp     w0, 0
+        beq     .L3
+        ldr     w0, [sp, 12]
+        add     w0, w0, 1
+        str     w0, [sp, 12]
+.L3:
+        nop
+        add     sp, sp, 16
+        ret
+#+end_src
+Выделяем фрейм
+33 в W0
+Инициализируем переменную по смещению 12
+Берем ее обратно
+Результат побитового и w0 1 в w0
+cmp w0 0
+branch if equal w0 и 0
+CMP + BEQ ~ if x % 2 == 0
+** if else
+#+begin_src c
+int some_func_3(int x) {
+   if(x > 10) {
+       return x - 10;
+   } else if(x < 10) {
+       return x + 10;
+   } else {
+       return 0;
+   }
+}
+#+end_src
+*** x86
+#+begin_src asm
+push    rbp
+        mov     rbp, rsp
+        mov     DWORD PTR [rbp-4], edi
+        cmp     DWORD PTR [rbp-4], 10
+        jle     .L2
+        mov     eax, DWORD PTR [rbp-4]
+        sub     eax, 10
+        jmp     .L3
+.L2:
+        cmp     DWORD PTR [rbp-4], 9
+        jg      .L4
+        mov     eax, DWORD PTR [rbp-4]
+        add     eax, 10
+        jmp     .L3
+.L4:
+        mov     eax, 0
+.L3:
+        pop     rbp
+        ret
+#+end_src
+Аргумент кладем из edi в rbp-4
+cmp аргумента с 10 и jle
+если значение меньше 10 прыгаем в L2 и просиходит cmp аргумента с 9 для проверки равенства 10 else sub 10
+если = 10 возвращаем 0
+если нет add 10 -> jmp L3
+*** ARM
+#+begin_src asm
+sub     sp, sp, #16
+        str     w0, [sp, 12]
+        ldr     w0, [sp, 12]
+        cmp     w0, 32
+        ble     .L2
+        ldr     w0, [sp, 12]
+        sub     w0, w0, #32
+        b       .L3
+.L2:
+        ldr     w0, [sp, 12]
+        cmp     w0, 31
+        bgt     .L4
+        ldr     w0, [sp, 12]
+        add     w0, w0, 32
+        b       .L3
+.L4:
+        mov     w0, 0
+.L3:
+        add     sp, sp, 16
+        ret
+#+end_src
+
+кладем на стек аргумент по смещению 12
+сравниваем с целевым значением
+branch less or equal L2 else sub 32
+L2 cmp 31 для проверки равенства
+branch greater than L4 -> return 0 else add 32
+
+** switch
+#+begin_src c
+int some_func_5(const int x) {
+   int k = 5;
+   switch(x) {
+        case 5:
+            k += 5;
+        break;
+        case 10:
+            k += 10;
+        break;
+        default:
+            k = 0;
+        break;
+   }
+
+   return k;
+}
+#+end_src
+*** x86
+#+begin_src asm
+push    rbp
+        mov     rbp, rsp
+        mov     DWORD PTR [rbp-20], edi
+        mov     DWORD PTR [rbp-4], 5
+        cmp     DWORD PTR [rbp-20], 5
+        je      .L2
+        cmp     DWORD PTR [rbp-20], 10
+        je      .L3
+        jmp     .L7
+.L2:
+        add     DWORD PTR [rbp-4], 5
+        jmp     .L5
+.L3:
+        add     DWORD PTR [rbp-4], 10
+        jmp     .L5
+.L7:
+        mov     DWORD PTR [rbp-4], 0
+        nop
+.L5:
+        mov     eax, DWORD PTR [rbp-4]
+        pop     rbp
+        ret
+#+end_src
+Кладем аргументы на стек
+k = 5 -> rbp - 20
+x -> rbp - 4
+cmp k, 5 -> je L2 or cmp k, 10 je L3 else jmp L7
+L2 add 5 jmp return
+L3 add 10 jmp return
+L7 k = 0
+Отличие от if/else в последовательной проверке?
+Почему в L7 вставился nop?
+
+*** ARM
+#+begin_src asm
+sub     sp, sp, #32
+        str     w0, [sp, 12]
+        mov     w0, 32
+        str     w0, [sp, 28]
+        ldr     w0, [sp, 12]
+        cmp     w0, 8
+        beq     .L2
+        ldr     w0, [sp, 12]
+        cmp     w0, 16
+        beq     .L3
+        b       .L7
+.L2:
+        ldr     w0, [sp, 28]
+        sub     w0, w0, #8
+        str     w0, [sp, 28]
+        b       .L5
+.L3:
+        ldr     w0, [sp, 28]
+        sub     w0, w0, #16
+        str     w0, [sp, 28]
+        b       .L5
+.L7:
+        str     wzr, [sp, 28]
+        nop
+.L5:
+        ldr     w0, [sp, 28]
+        add     sp, sp, 32
+        ret
+#+end_src
+Все также как и в x86 только зачем два ldr w0, [sp, 12]?
+
+** for
+#+begin_src c
+void some_func_7() {
+    int arr[10] = { 0 };
+    for (int i = 0; i < 10; i++)
+        arr[i] = i;
+}
+#+end_src
+*** x86
+#+begin_src asm
+push    rbp
+        mov     rbp, rsp
+        pxor    xmm0, xmm0
+        movaps  XMMWORD PTR [rbp-48], xmm0
+        movaps  XMMWORD PTR [rbp-32], xmm0
+        movq    QWORD PTR [rbp-16], xmm0
+        mov     DWORD PTR [rbp-4], 0
+        jmp     .L2
+.L3:
+        mov     eax, DWORD PTR [rbp-4]
+        cdqe
+        mov     edx, DWORD PTR [rbp-4]
+        mov     DWORD PTR [rbp-48+rax*4], edx
+        add     DWORD PTR [rbp-4], 1
+.L2:
+        cmp     DWORD PTR [rbp-4], 9
+        jle     .L3
+        nop
+        nop
+        pop     rbp
+        ret
+
+#+end_src

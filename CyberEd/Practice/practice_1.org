@@ -14,6 +14,7 @@ int main(int argc, char** argv){
 /* int main(int argc, char **argv) { ... } */
 
 #+end_src
+
 * ARM Ликбез :basics:ARM:
  X0-X7 - аргументы, как rdi, rsi, rdx ...
  X0 - return value (rax)
@@ -42,6 +43,25 @@ LDP             X29, X30, [SP,#0x20+var_s0]
 ADD             SP, SP, #0x30 ; '0'
 RET
 #+end_src
+
+1. SUB - выделенение фрейма на стеке, размером 0x30=48байт
+2. Сохранение старого FP и LR на стек при помощи STore Pair
+    [SP + 0x20] = старый X29
+    [SP + 0x28] = старый X30
+    из регистров в память
+3. X29 = SP+0x20
+   поставили новый FP в регистр
+4. 0 в W8
+5. MOV - reg <-> reg; STR - reg -> mem, STR записывает в паямять по адресу в регистре
+6. W8 -> SP + 0x20 + var_14(-0x14) = SP + 0xC
+7. STUR store unscaled registr, offest берется как есть в отличие от STR где он приводится к кратному размеру
+8. Пишем в память по адресу X29 + var_4 / X29 + var_8 0 (WZR)
+9. X1 -> SP + 0x20+var_10 сохраняем второй аргумент
+10. ADR LOAD в регистр X0, там будет Hello World := ADRP + ADD загружается PC + ADD offset
+11. call _puts, адрес возврата сохраняется в X30
+12. возвращаемое значение в W0
+13. Восстановление FP и LR
+
 
 * Ida hotkeys :basics:Ida:
 
@@ -93,3 +113,7 @@ int func(int a, char b);
 - Импорт типов
 Из заголовков: File → Load file → Parse C header
 или: Edit → Plugins → C parser
+
+
+* Вопросы :question:task:hmm:
+ Что такое variadic функции
