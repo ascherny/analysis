@@ -1,0 +1,115 @@
+* x86_64
+#+begin_src asm
+loops:
+push    rbp
+mov     rbp, rsp
+mov     QWORD PTR [rbp-16], 0
+mov     DWORD PTR [rbp-8], 0
+mov     DWORD PTR [rbp-4], 0
+jmp     .L2
+.L3:
+mov     eax, DWORD PTR [rbp-4]
+sal     eax, 2
+lea     edx, [rax+1]
+mov     eax, DWORD PTR [rbp-4]
+cdqe
+mov     DWORD PTR [rbp-16+rax*4], edx
+add     DWORD PTR [rbp-4], 1
+.L2:
+cmp     DWORD PTR [rbp-4], 2
+jle     .L3
+nop
+pop     rbp
+ret
+#+end_src
+* ARM
+#+begin_src asm
+loops:
+sub     sp, sp, #16
+str     xzr, [sp]
+str     wzr, [sp, 8]
+str     wzr, [sp, 12]
+b       .L2
+.L3:
+ldr     w0, [sp, 12]
+lsl     w0, w0, 2
+add     w2, w0, 1
+ldrsw   x0, [sp, 12]
+lsl     x0, x0, 2
+mov     x1, sp
+str     w2, [x1, x0]
+ldr     w0, [sp, 12]
+add     w0, w0, 1
+str     w0, [sp, 12]
+.L2:
+ldr     w0, [sp, 12]
+cmp     w0, 2
+ble     .L3
+nop
+add     sp, sp, 16
+ret
+
+#+end_src
+
+
+* Answ
+** x86
+#+begin_src text
+loops:
+        Инициализируем 0 в rbp-4,8,16 и прыгаем в L2
+        rbp-4 = 0
+        rbp-8 = 0
+        qword rbp-9...16 = 0
+L2:
+        cmp rbp-4, 2 ; в первом проходе всегда jle на L3
+L3:
+        eax = rbp-4 = 0 ; i++
+        eax = eax * 4 = 0
+        edx = eax + 1 ; edx = (i*4)+1 = 1 ; формула записи
+        eax = rbp-4 = 0
+        eax = rax
+        rbp-16+rax~0*4 = edx = rbp-16 ; адрес записи
+        rbp-4 = rbp-4~0+1=1
+L2:
+        cmp rbp-4~1, 2; => L3
+L3:
+        eax = rbp-4 = 1
+        eax = eax * 4 = 4
+        edx = eax + 1 = 5
+        eax = rbp-4 = 1
+        eax = rax
+        rbp-16+rax~1*4 = rbp-12
+        rbp-4 = rbp-4+1 = 2
+L2:
+        cmp rbp-4~2, 2
+        финальный jle
+        2 * 4 + 1 = 9 который запишется в rbp-8
+
+#+end_src
+
+** ARM
+loops:
+    Освобождаем на стеке 16байт
+    sp, sp+8, sp+12 = 0
+    bracnh L2
+L2:
+    w0 = sp+12 = 0
+    cmp w2~0, 2 ; будет 3 прохода т.к. потом ble
+    => L3
+L3:
+    w0 = sp+12 = 0 ; w0 = i
+    w0 = w0 * 4 = 0
+    w2 = w0 + 1 = 1 ; w2 = a[i]
+    x0 = sp+12 = 0
+    x0 = x0 * 4 = 0
+    x1 = sp = 0
+    (x1 + x0) = w2 = 1 ; кладем последовательно значения на стек
+    w0 = sp+12 = 0
+    w0 = w0 + 1
+    sp+12 = w0 = 1
+    => L2
+
+    for (i=0; i<3; i++) {
+        (i*4)+1
+        }
+        answ: 1, 5, 9
