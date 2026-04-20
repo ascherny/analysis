@@ -252,4 +252,255 @@ push    rbp
         ret
 
 #+end_src
-xmm
+xmm0 - 128 бит
+MOVAPS - Move four aligned packed single precision floating-point values between XMM registers or
+between an XMM register and memory
+Паттерн обнуления массива / memset(0)
+#+begin_src asm
+pxor xmm0, xmm0
+movaps [...]
+#+end_src
+После инициализации массива прыгаем в L2, cmp i, 9, если i < 9 -> L3
+CDQE - Convert doubleword to quadword.
+L3 это тело цикла
+берем аргумент в eax и приводим его к QWORD eax= i
+edx = i
+rbp-48 - начало массива arr, rax*4 -> i * sizeof(int)
+в L3 индекс инкрементируется и записывается по адресу rbp-48 + rax * 4
+в L2 происходит cmp 9 jle L3
+*** ARM
+#+begin_src asm
+sub     sp, sp, #32
+        stp     xzr, xzr, [sp, 8]
+        str     wzr, [sp, 24]
+        str     wzr, [sp, 28]
+        b       .L2
+.L3:
+        ldr     w1, [sp, 28]
+        mov     w0, w1
+        lsl     w0, w0, 2
+        add     w0, w0, w1
+        lsl     w0, w0, 1
+        mov     w2, w0
+        ldrsw   x0, [sp, 28]
+        lsl     x0, x0, 2
+        add     x1, sp, 8
+        str     w2, [x1, x0]
+        ldr     w0, [sp, 28]
+        add     w0, w0, 1
+        str     w0, [sp, 28]
+.L2:
+        ldr     w0, [sp, 28]
+        cmp     w0, 4
+        ble     .L3
+        nop
+        nop
+        add     sp, sp, 32
+        ret
+
+#+end_src
+Обнуляем регистры, i  = sp -28
+branch L2
+w0 = i
+cmp w0, 4
+branch less or equal L3
+если меньше 4 то заполняем массив
+w1 = i = *(sp+28)
+w0 = w1
+lsl w0, w0, 2 => w0 = w0 << 2 => w0 * (2^n) => w0 * 4
+w0 = w0 + w1 = i * 4 + i = i * 5
+w0 = w0 << 1 = i * 10
+w2 = w0
+LDRSW = Load Registr Signed Word - загружает 4 байта из памяти и расширяет со знаком до 32 байт в регистр
+x0 = (int64)i
+x0 = x0 * 4
+x1 = sp + 8 = &arr[0]
+
+#+begin_src text
+sub sp, sp, #32 выделяем 32 байта на стеке
+20 байт под массив 4 * 5 + 4 байта счетчик i + паддинг
+
+stp xzr, xzr, [sp, 8]
+str wzr, [sp, 24]
+str wzr, [sp, 28]
+
+Пишем 0 в два 64 битных регистра по адресам sp+8, sp+16
+Обнуляем sp+24
+Обнуляем sp+28
+
+В итоге есть a[n] = 0, n = {0,4} и i = 0
+
+sp+0  : не используется (выравнивание)
+sp+8  : a[0] = 0
+sp+12 : a[1] = 0
+sp+16 : a[2] = 0
+sp+20 : a[3] = 0
+sp+24 : a[4] = 0
+sp+28 : i   = 0
+sp+32 : старый sp (после возврата)
+
+ldr w1, [sp, 28] => w1 = i
+mov w0, w1       => w0 = w1
+lsl w0, w0, 2    => w0 = i << 2 = i*4
+add w0, w0, w1   => w0 = i*4 + i = i*5
+lsl w0, w0, 1    => w0 = i*5*2 = i*10
+mov w2, w0       => w2 = i*10
+
+a[i] = 10 * i
+
+| Инициализация счётчика | int i = 0 | str wzr, [sp, 28] |
+| Проверка условия цикла | i < 5     | cmp w0, 4         |
+| Увеличение счётчика    | i++       | add w0, w0, 1     |
+#+end_src
+
+** while
+#+begin_src c
+void some_func_9() {
+    int arr[5] = { 0 };
+    int i = 5;
+    while(i > 0) {
+        arr[i] = i;
+        i--;
+    }
+}
+#+end_src
+*** x86
+#+begin_src asm
+push    rbp
+        mov     rbp, rsp
+        pxor    xmm0, xmm0
+        movaps  XMMWORD PTR [rbp-32], xmm0
+        movd    DWORD PTR [rbp-16], xmm0
+        mov     DWORD PTR [rbp-4], 5
+        jmp     .L2
+.L3:
+        mov     eax, DWORD PTR [rbp-4]
+        cdqe
+        mov     edx, DWORD PTR [rbp-4]
+        mov     DWORD PTR [rbp-32+rax*4], edx
+        sub     DWORD PTR [rbp-4], 1
+.L2:
+        cmp     DWORD PTR [rbp-4], 0
+        jg      .L3
+        nop
+        nop
+        pop     rbp
+        ret
+#+end_src
+{rbp, rbp-32} = 0
+[rbp - 4] = 5 = i
+jmp L2
+eax = i = 5
+eax = rax = (int64)5
+edx = i = 5
+edx = rbp-32 + rax * 4
+[rbp - 4] = 5 - 1 = 4
+jmp L2
+cmp 0
+jg L3
+*** ARM
+Добавим операцию
+#+begin_src c
+void some_func_10() {
+    int arr[8] = { 0 };
+    int i = 8;
+    while(i > 0) {
+        arr[i] = i * 2;
+        i--;
+    }
+}
+#+end_src
+#+begin_src asm
+sub     sp, sp, #48
+        stp     xzr, xzr, [sp, 8]
+        stp     xzr, xzr, [sp, 24]
+        mov     w0, 8
+        str     w0, [sp, 44]
+        b       .L2
+.L3:
+        ldr     w0, [sp, 44]
+        lsl     w2, w0, 1
+        ldrsw   x0, [sp, 44]
+        lsl     x0, x0, 2
+        add     x1, sp, 8
+        str     w2, [x1, x0]
+        ldr     w0, [sp, 44]
+        sub     w0, w0, #1
+        str     w0, [sp, 44]
+.L2:
+        ldr     w0, [sp, 44]
+        cmp     w0, 0
+        bgt     .L3
+        nop
+        nop
+        add     sp, sp, 48
+        ret
+#+end_src
+sp = sp + 48
+{sp+8...sp+36} = 0
+w0 = 8
+sp + 44 = 8
+Branch L2
+w0 = 8 со стека
+cmp w0, 0 branch grater L3
+Заполняем массив
+w2 = w0 * 2
+x0 = (int64)8
+x0 = 8 * 4
+x1 = sp+8 = 0
+
+** x86 loop
+#+begin_src asm
+entry:
+    mov rcx, 10
+    mov rax, 1
+_loop:
+    add rax, 2
+    mov rbx, 3
+    mul rbx
+    loop _loop
+#+end_src
+loop использует значение rcx как счетчик который декрементируется и проверяется на 0
+
+* Анализ алгоритмов :asm:basics:pattern:
+1. Определить границы работы алгоритма
+2. Декомпозировать алгоритм на составные части e.g. инициализация данных, обработка, условия, запись
+3. Осознать откуда, куда и какие данные используются
+4. Провести связи между декомпозированными элементами
+5. Сформировать итоговую задачу листнинга
+
+Пример:
+#+begin_src asm
+.LC0:
+        .string "You're right!"
+.LC1:
+        .string "Incorrect!"
+answ:
+        push    rbp
+        mov     rbp, rsp
+        sub     rsp, 16
+        mov     DWORD PTR [rbp-4], edi
+        mov     eax, DWORD PTR [rbp-4]
+        sar     eax
+        cmp     eax, 0x41414141
+        jne     .L2
+        mov     edi, OFFSET FLAT:.LC0
+        call    puts
+        jmp     .L4
+.L2:
+        mov     edi, OFFSET FLAT:.LC1
+        call    puts
+.L4:
+        nop
+        leave
+        ret
+#+end_src
+
+1. Выполнено по постановке задачи
+2. Видим блок answ и L2/L4, сразу видно что L2 передаеи строку в вывод, L4 - выход, answ - обработка
+3. В L2 мы можем попасть по условию jne L2 которое сравнив eax с фиксированым числом
+   Функция принимает аргуент который передается через edi по соглашению о вызовах
+   Кладем аргумет в eax - регистр который передает результат функции
+   sar - Shift arithmetic right = x / 2
+4. Соответственно input должен быть 1094795585 * 2
+5. if argv[0] 0x82828282 then "You're right!"
