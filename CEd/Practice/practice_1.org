@@ -1,6 +1,6 @@
 #+title: Practice_1
 
-* Base_reverse_ASM :basics:asm:ARM:
+* Base_reverse_ASM asm:ARM:
 
 #+begin_src c
 #include "stdio.h"
@@ -15,7 +15,7 @@ int main(int argc, char** argv){
 
 #+end_src
 
-* ARM Ликбез :basics:ARM:
+* ARM Ликбез ARM:
  X0-X7 - аргументы, как rdi, rsi, rdx ...
  X0 - return value (rax)
  X29 - Frame pointer (rbp)
@@ -63,7 +63,7 @@ RET
 13. Восстановление FP и LR
 
 
-* Ida hotkeys :basics:Ida:
+* Ida hotkeys Ida:
 
 - Rename: N
 - Change type: Y
