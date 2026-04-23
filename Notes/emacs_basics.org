@@ -1,16 +1,14 @@
 #+title: Emacs Basics
 
-* Doom Emacs Architecture :emacs:
-** Конфигурация :test:
-
+* Doom emacs
+** Doom Emacs Architecture :emacs:
+*** Конфигурация :test:
 ~/.doom.d/~ содержит основные файлы:
-
 - ~init.el~ — включает модули Doom
 - ~config.el~ — пользовательская конфигурация
 - ~packages.el~ — дополнительные пакеты
 
 Пример включения модулей:
-
 #+begin_src elisp
 :lang
 (emacs-lisp +lsp)
@@ -29,35 +27,28 @@ snippets
 (org +roam)
 #+end_src
 
-* Leader Key
+** Leader Key
 
 Doom использует leader клавишу:
-
 SPC
 
 Примеры:
-
 - SPC f f  — открыть файл
 - SPC f s  — сохранить файл
 - SPC b b  — список буферов
 - SPC p p  — открыть проект
 - SPC g g  — git
 
-* Buffers
-
+** Buffers
 В Emacs работа идет с буферами.
-
 buffer = объект в памяти, содержащий текст.
-
 Файл открывается → создается buffer.
 
 Основные команды:
-
 - SPC b b — список буферов
 - SPC b k — закрыть буфер
 
-* Windows (split)
-
+** Windows (split)
 Разделение окна:
 
 - SPC w v — вертикальный split
@@ -71,94 +62,71 @@ buffer = объект в памяти, содержащий текст.
 - SPC w k
 - SPC w l
 
-* Проекты (Projectile)
-
+** Проекты (Projectile)
 Проект — это директория с:
-
 - .git
 - Makefile
 - package.json
+- Cargo.toml
+-
 
 Команды:
-
 - SPC p p — открыть проект
 - SPC p f — файл проекта
 - SPC p s — поиск по проекту
 
-* Поиск
-
+** Поиск
 Используется ripgrep.
-
 - SPC s p — поиск в проекте
 - SPC s s — поиск в файле
 - SPC / — поиск в текущем буфере
 
-* Org Mode
-
+** Org Mode
 Org — формат для заметок.
 
 Пример структуры:
-
-
 \* Заголовок
 \** Подраздел
 \*** Детали
 
 Списки:
-
 - пункт
 - пункт
 
 Сворачивание:
-
 TAB
 
-* Org Links
-
+** Org Links
 Ссылка на файл:
-
 [[file:another-note.org]]
 
 Ссылка на сайт:
+[[https://example.com]] -> SPC m l l -> [[https://example.com][description]]
 
-[[https://example.com]]
-
-* Терминал
-
+** Терминал
 Открыть терминал внутри Emacs:
-
 SPC o t
 
-* Выполнение команд
-
-Выполнить любую команду:
-
-SPC :
-
-* Справка
-
+** Справка
 Посмотреть что делает клавиша:
-
 SPC h k
 
-* Навигация
+** Навигация
 TAB - свернуть/развернуть
 gj/gk - перемещение по заголовкам
 
-* Прочие заметки
+** Прочие заметки
 - M=option C=ctrl
 - M-x occure = M-s o - регекс матч
 - С-x C-, - обереуть в код
-* Python :emacs:python:
-
+** Python :emacs:python:
     gd - перейти к определению функции
     C-o - вернуться
     zc - свернуть функцию
     zo - развернуть функцию
     o - вставит с начала строки
     SPC s i - список функций
-
-* ripgrep wgrep :emacs:wgrep:
+** ripgrep wgrep :emacs:wgrep:
 Поиск строки во всех файлах директории
 
 Если это проект (git папка):
@@ -182,4 +150,156 @@ C-c C-e
 Дальше:
 :%s/старое/новое/g
 :wq
-Emacs автоматически применит изменения во всех файлах
+
+
+* Elisp
+** Разбор elisp :elisp:
+
+*** Лексическая область - переменная видна в блоке кода где она определена и во вложенных блоках, поиск идет по структуре
+
+#+begin_src python :results output
+# x = "глобальная"
+# def func():
+#     print(x)
+# def caller():
+#     x = "локальная caller"
+#     func()
+# caller()
+#+end_src
+#+RESULTS:
+: глобальная
+
+В python используется LEGB - поиск от места определения функции
+ Local Enclosing Global Builtin
+От вызова x: Local - undef, Enclosing - undef, Global - defined, доступа к caller нет вообще
+
+*** Динамическая область - переменная видна в том месте, где была вызвана функция, поиск идет по вызовам
+#+begin_src elisp :results output
+(setq x "глобальная")
+(defun func ()
+  (princ x))
+(defun caller ()
+  (let ((x "локальная caller"))
+    (func)))
+(caller)
+#+end_src
+#+RESULTS:
+: локальная caller
+
+От вызова x: Local - undef, идем по вызовам outer -> inner
+
+#+begin_src elisp :results output
+;; -*- lexical-binding: t; -*-
+(defun make-func ()
+  (let ((x "hello"))
+    (lambda () (princ x))))
+(funcall (make-func))
+#+end_src
+
+#+RESULTS:
+: глобальная
+
+#+begin_src elsip
+(setq x nil)
+#+end_src
+
+#+begin_src elisp :results output
+;; -*- lexical-binding: t; -*-
+(defun make-func ()
+  (let ((x "hello"))
+    (lambda () (princ x))))
+(funcall (make-func))
+#+end_src
+
+#+RESULTS:
+: nil
+
+
+* Тесты
+** Резолв python окружения в зависимости от проекта
+
+#+begin_src bash
+uv venv --python 3.12
+#+end_src
+
+#+begin_src python :results output
+import sys; print(sys.version)
+#+end_src
+
+#+RESULTS:
+: 3.11.14 (main, Jan 14 2026, 21:09:41) [Clang 21.1.4 ]
+
+#+begin_src bash
+rm -rf .venv
+uv venv --python 3.12
+#+end_src
+
+#+begin_src elisp
+(org-mode-restart)
+#+end_src
+
+#+RESULTS:
+: org-mode restarted
+
+#+begin_src python :results output
+import sys; print(sys.version)
+#+end_src
+
+#+RESULTS:
+: 3.12.12 (main, Jan 14 2026, 23:36:32) [Clang 21.1.4 ]
+
+#+begin_src bash
+rm -rf .venv
+#+end_src
+
+#+begin_src elisp
+(org-mode-restart)
+#+end_src
+
+#+RESULTS:
+: org-mode restarted
+
+#+begin_src python :results output
+import sys; print(sys.version)
+#+end_src
+
+#+RESULTS:
+: 3.9.6 (default, Jan  9 2026, 11:03:41)
+: [Clang 17.0.0 (clang-1700.6.4.2)]
+
+** Elsip global пепеменные применяются глобально
+
+#+begin_src elisp :results output
+(setq x "глобальная") ;; Она установлена для всего emacs
+(defun func ()
+  (princ x))
+(defun caller ()
+  (let ((x "локальная caller"))
+    (func)))
+(caller)
+#+end_src
+#+RESULTS:
+: локальная caller
+
+
+#+begin_src elisp :results output
+(defun make-func ()
+  (let ((x "hello"))
+    (lambda () (princ x))))
+(funcall (make-func))
+#+end_src
+#+RESULTS:
+: глобальная
+
+#+begin_src elsip
+(setq x nil)
+#+end_src
+
+#+begin_src elisp :results output
+(defun make-func ()
+  (let ((x "hello"))
+    (lambda () (princ x))))
+(funcall (make-func))
+#+end_src
+#+RESULTS:
+: nil
