@@ -1,0 +1,247 @@
+#+title: Listning 3
+* Listning 3_1
+** x86
+#+begin_src asm
+.LC0:
+    .string "[ ! ] Invalid input!"
+.LC1:
+    .string "[ ! ] Value less or equal to zero!"
+loc:
+    push    rbp
+    mov     rbp, rsp
+    sub     rsp, 32
+    mov     DWORD PTR [rbp-20], edi
+    mov     DWORD PTR [rbp-24], esi
+    mov     DWORD PTR [rbp-28], edx
+    cmp     DWORD PTR [rbp-20], 0
+    je      .L2
+    cmp     DWORD PTR [rbp-24], 0
+    je      .L2
+    cmp     DWORD PTR [rbp-28], 0
+    jne     .L3
+.L2:
+    mov     edi, OFFSET FLAT:.LC0
+    mov     eax, 0
+    call    printf
+    mov     eax, 0
+    jmp     .L4
+.L3:
+    mov     edx, DWORD PTR [rbp-20]
+    mov     eax, DWORD PTR [rbp-24]
+    add     eax, edx
+    sub     eax, DWORD PTR [rbp-28]
+    mov     DWORD PTR [rbp-4], eax
+    cmp     DWORD PTR [rbp-4], 0
+    jg      .L5
+    mov     edi, OFFSET FLAT:.LC1
+    mov     eax, 0
+    call    printf
+    mov     eax, 0
+    jmp     .L4
+.L5:
+    mov     eax, DWORD PTR [rbp-4]
+    mov     edx, eax
+    shr     edx, 31
+    add     eax, edx
+    sar     eax
+.L4:
+    leave
+    ret
+#+end_src
+*** Решение
+Получаем три аргумента, кладем на стек как локальные переменные
+cmp arg1, 0 if t => .LC0 => ret
+cmp arg2, 0 if t => .LC0 => ret
+cmp arg3, 0 if t => .LCO => ret
+else .L3
+arg1 + arg2 - arg 3 = rbp-4
+cmp rbp-4, 0
+if L3_res > 0 => .L5
+ L5_res = L3_res shr 31 = 0 ; Shift logical right = логический сдвиг вправо на 31, младший бит выбрасывается, старший заполняется 0, соответственно останется только старший бит который стоит на месте младшего, он может быть 0 или 1, так как была проверка результата на > 0 то число положительное и старший бит = 0
+ res = L3_res + L5_res = L3_res + 0/1, но из-за jg в .L3 L5_res = 0
+ sar res  ; Shift arithmetical right = арифметический сдвиг вправо, младший бит выбрасывается, старший заполняется в соответствии со знаком числа и в случае положительного значения равно делению на 2**n n=число сдвигов с округлением к 0, в случае отрицательного деление с округлением вниз
+ res = res / 2
+ Елси бы не проверка на отрицательность в блоке .L3 то это было бы универсальное деление на 2 с округлением к 0
+ (x + (x < 0 ? 1 : 0)) >> 1
+
+#+begin_src C :results output
+#include <stdio.h>
+int main() {
+    int arg1 = -1;
+    int arg2 = 5;
+    int arg3 = 3;
+    if (arg1 == 0 || arg2 == 0 || arg3 == 0) {
+        printf("[ ! ] Invalid input!");
+    } else {
+      int sum = arg1 + arg2 - arg3;
+      if (sum > 0) {
+        int res = (sum + (sum < 0 ? 1 : 0)) >> 1;
+        printf("%d", res);
+      } else {
+        printf("[ ! ] Value less or equal to zero!");
+      }
+    }
+    return 0;
+}
+#+end_src
+#+RESULTS:
+: 0
+
+** ARM64
+#+begin_src asm
+.LC0:
+    .string "[ ! ] Invalid input!"
+.LC1:
+    .string "[ ! ] Value less or equal to zero!"
+loc:
+    stp     x29, x30, [sp, -48]!
+    mov     x29, sp
+    str     w0, [sp, 28]
+    str     w1, [sp, 24]
+    str     w2, [sp, 20]
+    ldr     w0, [sp, 28]
+    cmp     w0, 0
+    beq     .L2
+    ldr     w0, [sp, 24]
+    cmp     w0, 0
+    beq     .L2
+    ldr     w0, [sp, 20]
+    cmp     w0, 0
+    bne     .L3
+.L2:
+    adrp    x0, .LC0
+    add     x0, x0, :lo12:.LC0
+    bl      printf
+    mov     w0, 0
+    b       .L4
+.L3:
+    ldr     w1, [sp, 28]
+    ldr     w0, [sp, 24]
+    add     w1, w1, w0
+    ldr     w0, [sp, 20]
+    sub     w0, w1, w0
+    str     w0, [sp, 44]
+    ldr     w0, [sp, 44]
+    cmp     w0, 0
+    bgt     .L5
+    adrp    x0, .LC1
+    add     x0, x0, :lo12:.LC1
+    bl      printf
+    mov     w0, 0
+    b       .L4
+.L5:
+    ldr     w0, [sp, 44]
+    lsr     w1, w0, 31
+    add     w0, w1, w0
+    asr     w0, w0, 1
+.L4:
+    ldp     x29, x30, [sp], 48
+    ret
+#+end_src
+*** Решение
+Выделяем место под фрейм фукнции
+Берем 3 переменные из регистров
+Сравниваем каждую с 0
+if arg1 or arg 2 or arg3 = 0 => .L2 => "Invalid input!"
+else .L3
+sum = arg1 + arg2 - arg3
+if sum > 0 => .L5 else => "Value less or equal to zero!"
+.L5
+sum_w1 logical shift right: sum_w1 = 0 or 1 в зависимости от старшего бита = в зависимости от знака числа, но в данном случае 0 так как была проверка на sum > 0
+sum = sum + sum_w1
+sum arithmetical shift right = sum / 2
+return sum
+
+* Listning 3_2
+** x86
+#+begin_src asm
+.LC0:
+    .string "[ ! ] Incorrect input, returning base value"
+task:
+    push    rbp
+    mov     rbp, rsp
+    sub     rsp, 32
+    mov     DWORD PTR [rbp-20], edi
+    mov     DWORD PTR [rbp-24], esi
+    mov     DWORD PTR [rbp-4], 16
+    cmp     DWORD PTR [rbp-20], 0
+    jne     .L2
+    cmp     DWORD PTR [rbp-24], 0
+    jne     .L2
+    mov     edi, OFFSET FLAT:.LC0
+    mov     eax, 0
+    call    printf
+    mov     eax, DWORD PTR [rbp-4]
+    jmp     .L3
+.L2:
+    mov     edx, DWORD PTR [rbp-20]
+    mov     eax, DWORD PTR [rbp-24]
+    add     eax, edx
+    sal     eax, 2
+    add     eax, 32
+    sub     eax, DWORD PTR [rbp-4]
+.L3:
+    leave
+    ret
+#+end_src
+
+Создаем фрейм 32 байта
+Кладем на стек локальные переменные из регистров edi, esi
+Кладем локальную переменную 16
+
+rbp
+rbp - 4 = 16
+rbp - 8 =
+rbp - 12 =
+rbp - 16 =
+rbp - 20 = arg1
+rbp - 24 = arg2
+
+if arg1 != 0 or arg2 != 0 =>
+sal = shift arithmetical left
+(((arg1 + arg2) * 4) + 32) - 16
+** ARM64
+#+begin_src asm
+.LC0:
+    .string "[ ! ] Incorrect input, returning base value"
+task:
+    stp     x29, x30, [sp, -48]!
+    mov     x29, sp
+    str     w0, [sp, 28]
+    str     w1, [sp, 24]
+    mov     w0, 16
+    str     w0, [sp, 44]
+    ldr     w0, [sp, 28]
+    cmp     w0, 0
+    bne     .L2
+    ldr     w0, [sp, 24]
+    cmp     w0, 0
+    bne     .L2
+    adrp    x0, .LC0
+    add     x0, x0, :lo12:.LC0
+    bl      printf
+    ldr     w0, [sp, 44]
+    b       .L3
+.L2:
+    ldr     w1, [sp, 28]
+    ldr     w0, [sp, 24]
+    add     w0, w1, w0
+    lsl     w0, w0, 2
+    add     w1, w0, 32
+    ldr     w0, [sp, 44]
+    sub     w0, w1, w0
+.L3:
+    ldp     x29, x30, [sp], 48
+    ret
+#+end_src
+
+Создаем фрейм 48 байт
+Сохраняем FP, LR
+Берем 2 аргумента из регистров и кладем в +24, +28
+локальная переменная 16 в +44
+if arg1 = 0 or arg2 = 0 => "Incorrect"
+else
+.L2
+sum = arg1 + arg2
+logical shift left 2 = sum * 4
+((sum * 4) + 32) - 16

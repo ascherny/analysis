@@ -71,16 +71,282 @@ ret ~ rip = *rsp, rsp = rsp+8
 
 ** Пример ARM
 #+begin_src asm
+    ; Пролог
 sub     sp, sp, #16
         mov     w0, 5
         str     w0, [sp, 12]
         mov     w0, 4
         str     w0, [sp, 8]
+    ; Тело
         ldr     w1, [sp, 12]
         ldr     w0, [sp, 8]
         add     w0, w1, w0
         str     w0, [sp, 4]
+    ; Эпилог
         ldr     w0, [sp, 4]
         add     sp, sp, 16
         ret
 #+end_src
+sub резервирует стек фрейм размером 16 байт
+w0 = 5 = a
+кладем a на стек
+==//== b
+a и b лежат по смещениям 12 и 8 от sp
+w1 = a, w0 = b, w0 = a + b
+a + b кладем по смещению sp+4
+w0 cодержит результат функции
+Стек очищается
+ret = jmp x30, return = адрес следующей инструкции, add sp, sp 16 восстанавливает стек, тут нет вызовов вложенных функций переходим на LR какой есть
+
+* Cоглашения о вызовах функций :asm:calls:
+cdecl, stdcall,fastcall и thiscall
+Соглашение о вызовах это решение на уровне комприлятора
+** cdecl
+Стандартное соглашения для языка C с 32bit компилятором
+
+Передача аргументов   - Через стек
+Размещение аргументов - Справа на лево
+Очистка стека         - Вызывающая функция
+Возврат результата    - eax/w0, для 8 байтовых чисел пары edx:eax/w0:w1
+
+** stdcall
+ Соглашение 32 bit Windows
+
+Передача аргументов   - Через стек
+Размещение аргументов - Справа на лево
+Очистка стека         - Вызываемая функция
+Возврат результата    - eax/w0, для 8 байтовых чисел пары edx:eax/w0:w1
+
+** fastcall
+ Группа соглашений которые используют регистры для передачи аргументов
+
+Передача аргументов   - rcx, rdx, r8, r9
+Размещение аргументов - регистровые в порядке регистров сверху, стек справа на лево
+Очистка стека         - Вызываемая функция
+Возврат результата    - eax/w0, для 8 байтовых чисел пары edx:eax/w0:w1
+
+** thiscall
+thiscall  соглашение вызова методов C++ классов в 32bit
+
+Передача аргументов   - this через ecx
+Размещение аргументов - справа на лево
+Очистка стека         - Вызываемая функция
+Возврат результата    - eax/w0, для 8 байтовых чисел пары edx:eax/w0:w1
+
+** System V AMD64 ABI
+ABI (Application Binary Interface), calling convention - одна из частей
+
+Передача аргументов   - rdi, rsi, rdx, rcx, r8, r9
+Размещение аргументов - 7+ справа на лево
+Очистка стека         - Вызывающая функция
+Возврат результата    - rax/x0
+
+Для ARM64 аналог AAPCS64
+  Концепция что каждая функция управляет своим фреймом
+  #+begin_src asm
+  caller:
+;       (почти всегда без стека — аргументы в регистрах)
+      bl func
+  callee:
+      sub sp, N      ; выделил свой frame
+;      ...
+      add sp, N      ; убрал свой frame
+      ret
+
+  #+end_src*** Пример stdcall vs cdecl
+#+begin_src c
+int Add(int a, int b) {
+    return a + b;
+}
+#+end_src
+#+begin_src asm
+    ; cdecl
+; Вызывающий код
+push 20          ; второй параметр
+push 10          ; первый параметр
+call Add         ; вызов функции
+add esp, 8       ; Caller сам очищает 8 байт стека
+mov [result], eax
+#+end_src
+#+begin_src asm
+    ; stdcall
+; Вызывающий код
+push 20
+push 10
+call Add
+mov [result], eax
+Add:
+    push ebp
+    mov ebp, esp
+
+    mov eax, [ebp+8]   ; a
+    add eax, [ebp+12]  ; + b
+
+    pop ebp
+    ret 8 ; Callee очищает стек: ret 8 := rip = [rsp], rsp += 8 + 8
+#+end_src
+
+*** Общие примеры
+#+begin_src c
+int mul(int a, int b) {
+    return a * b;
+}
+
+void dummy() {
+    int a = 2;
+    int b = 16;
+    int res = mul(a, b);
+}
+#+end_src
+
+**** x86_64
+#+begin_src asm
+mul:
+        push    rbp
+        mov     rbp, rsp
+        mov     DWORD PTR [rbp-4], edi
+        mov     DWORD PTR [rbp-8], esi
+        mov     eax, DWORD PTR [rbp-4]
+        imul    eax, DWORD PTR [rbp-8]
+        pop     rbp
+        ret
+dummy:
+        push    rbp
+        mov     rbp, rsp
+        sub     rsp, 16
+        mov     DWORD PTR [rbp-4], 2
+        mov     DWORD PTR [rbp-8], 16
+        mov     edx, DWORD PTR [rbp-8]
+        mov     eax, DWORD PTR [rbp-4]
+        mov     esi, edx
+        mov     edi, eax
+        call    mul
+        mov     DWORD PTR [rbp-12], eax
+        nop
+        leave
+        ret
+#+end_src
+
+в прологе dummy выделяем 16 байт и инициализируем премеренные 2 и 16 по смещениям -4, -8
+перемещаем аргументы по регистрам пока не положим в edi, esi
+call кладет на стек адрес вызываемой инструкции
+аргументы подготовлены в edi, esi
+очистка должна происходить функцией dummy, но все аргументы переданы через регистры
+
+**** ARM64
+#+begin_src asm
+mul:
+        sub     sp, sp, #16
+        str     w0, [sp, 12]
+        str     w1, [sp, 8]
+        ldr     w1, [sp, 12]
+        ldr     w0, [sp, 8]
+        mul     w0, w1, w0
+        add     sp, sp, 16
+        ret
+dummy:
+        stp     x29, x30, [sp, -32]!
+        mov     x29, sp
+        mov     w0, 2
+AAPCS64        str     w0, [sp, 28]
+        mov     w0, 16
+        str     w0, [sp, 24]
+        ldr     w1, [sp, 24]
+        ldr     w0, [sp, 28]
+        bl      mul
+        str     w0, [sp, 20]
+        nop
+        ldp     x29, x30, [sp], 32
+        ret
+#+end_src
+dummy:
+Сохраняем X29, X30 = FP, LR выделяя место на стеке от 32
+x30 = link register = адрес следующей инструкции ~ return address
+x29 = Frame pointer аналог rbp
+через w0 кладем аргументы по смещенииям 28, 24
+далее кладем аргументы в w0, w1
+bl кладет адрес возврата в LR
+в mul выделяяется свой стек
+производится логика функции
+и затем фрейм функции очищается
+если бы использовалась передача аргументов через стек, то их бы чистил caller:w
+
+* Алгоритм анализа функции :asm:reverse:
+Декомпиляторы иногда ощибаются и чаще всего в моментах вызова функций
+1. Определить функцию
+2. Определить соглашение
+3. Определить каким образом передаются аргументы
+4. На основе полученного определить количество и типы аргументов
+
+   #+begin_src asm
+op:
+        push    rbp
+        mov     rbp, rsp
+        mov     DWORD PTR [rbp-4], edi
+        mov     DWORD PTR [rbp-8], esi
+        mov     DWORD PTR [rbp-12], edx
+        mov     eax, DWORD PTR [rbp-4]
+        imul    eax, DWORD PTR [rbp-8]
+        sub     eax, DWORD PTR [rbp-12]
+        pop     rbp
+        ret
+calltask:
+        push    rbp
+        mov     rbp, rsp
+        sub     rsp, 16
+        mov     DWORD PTR [rbp-4], 5
+        mov     DWORD PTR [rbp-8], 10
+        mov     DWORD PTR [rbp-12], 8
+        mov     edx, DWORD PTR [rbp-12]
+        mov     ecx, DWORD PTR [rbp-8]
+        mov     eax, DWORD PTR [rbp-4]
+        mov     esi, ecx
+        mov     edi, eax
+        call    op
+        mov     DWORD PTR [rbp-16], eax
+        mov     eax, DWORD PTR [rbp-16]
+        leave
+        ret
+   #+end_src
+
+   1. op
+   2. system v amd 64
+   3. edi, esi, edx - 1, 2, 3 аргументы со значениями 5, 10, 8
+   4. 5 * 10 - 8 = eax ~ возвращаемое из op
+
+#+begin_src asm
+op:
+        sub     sp, sp, #16
+        str     w0, [sp, 12]
+        str     w1, [sp, 8]
+        str     w2, [sp, 4]
+        ldr     w1, [sp, 12]
+        ldr     w0, [sp, 8]
+        mul     w1, w1, w0
+        ldr     w0, [sp, 4]
+        sub     w0, w1, w0
+        add     sp, sp, 16
+        ret
+calltask:
+        stp     x29, x30, [sp, -32]!
+        mov     x29, sp
+        mov     w0, 5
+        str     w0, [sp, 28]
+        mov     w0, 10
+        str     w0, [sp, 24]
+        mov     w0, 8
+        str     w0, [sp, 20]
+        ldr     w2, [sp, 20]
+        ldr     w1, [sp, 24]
+        ldr     w0, [sp, 28]
+        bl      op
+        str     w0, [sp, 16]
+        ldr     w0, [sp, 16]
+        ldp     x29, x30, [sp], 32
+            ret
+#+end_src
+
+1. op
+2. AAPCS64
+3. w0, w1, w2 - 1, 2, 3 аргументы со значениями 5, 10, 8
+4. w0 = 5 * 10 - 8

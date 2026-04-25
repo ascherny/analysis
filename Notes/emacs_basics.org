@@ -151,7 +151,32 @@ C-c C-e
 :%s/старое/новое/g
 :wq
 
+** Система меток
+#+begin_src elisp
+;; Функция поиска по тегам req org-ql
+(defun my/org-ql-search-by-tags (tags)
+  (interactive
+   (list
+    (completing-read-multiple
+     "Tags: "
+     (org-global-tags-completion-table)
+     nil nil)))
 
+  (let* ((root (projectile-project-root))
+         (files (directory-files-recursively root "\\.org$")))
+    (org-ql-search
+     files
+     `(and ,@(mapcar (lambda (t) `(tags ,t)) tags)))))
+
+(map! :leader
+      :prefix ("n" . "notes")
+      :desc "Search by tags (project)"
+      ":" #'my/org-ql-search-by-tags)
+
+#+end_src
+функция поиска по меткам которая возвращает главы с меткой переданной как аргумент SPC n :
+Пока что не придумал более удобного способа чем развернутое имя главы с соответствующими метками для навигации
+Возможно нужна какая-то иерархия, дерево меток?
 * Elisp
 ** Разбор elisp :elisp:
 
