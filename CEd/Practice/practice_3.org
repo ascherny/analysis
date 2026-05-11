@@ -1,0 +1,651 @@
+#+title: Practice 3
+* Graph
+                                                                                    ┌──────────────────────────────────────────┐
+                                                                                    │  0x10a0                                  │
+                                                                                    │ ; [15] -r-x section size 837 named .text │
+                                                                                    │   ; DATA XREF from entry0 @ 0x12a1       │
+                                                                                    │   ;-- section..text:                     │
+                                                                                    │   ;-- .text:                             │
+                                                                                    │ main(unknown_t arg_44h);                 │
+                                                                                    │ ; var unknown_t var_30h @ stack - 0x30   │
+                                                                                    │ ; var unknown_t var_bh @ stack - 0xb     │
+                                                                                    │ ; arg unknown_t arg_44h @ stack + 0x44   │
+                                                                                    │ endbr64                                  │
+                                                                                    │ push r13                                 │
+                                                                                    │ xor edx, edx                             │
+                                                                                    │ mov r10d, 0x01                           │
+                                                                                    │ ; ascii                                  │
+                                                                                    │ mov esi, 0x78                            │
+                                                                                    │ push r12                                 │
+                                                                                    │ ; ascii                                  │
+                                                                                    │ mov ecx, 0x78                            │
+                                                                                    │ ; ascii                                  │
+                                                                                    │ mov r9d, 0x2e                            │
+                                                                                    │ push rbp                                 │
+                                                                                    │ push rbx                                 │
+                                                                                    │ sub rsp, 0x98                            │
+                                                                                    │ mov rax, qword fs:[0x28]                 │
+                                                                                    │ mov qword [var_30h], rax                 │
+                                                                                    │ xor eax, eax                             │
+                                                                                    │ mov rbx, rsp                             │
+                                                                                    │ mov rax, rbx                             │
+                                                                                    │ jmp 0x113e                               │
+                                                                                    └──────────────────────────────────────────┘
+                                                                                        v
+                                                                                        │
+                                                                                        └──────┐
+                                                                                                │ ┌──────────────────────────┐
+                                                                                                │ │                          │
+                                                                                        ┌────────────────────────────────┐ │
+                                                                                        │  0x113e                        │ │
+                                                                                        │ ; code xref from main @ 0x10e2 │ │
+                                                                                        │ mov byte [rax], sil            │ │
+                                                                                        │ mov esi, edx                   │ │
+                                                                                        │ mov r8d, r9d                   │ │
+                                                                                        │ ; 4294967287                   │ │
+                                                                                        │ and esi, 0xfffffff7            │ │
+                                                                                        │ cmp esi, 0x01                  │ │
+                                                                                        │ cmovz r8d, ecx                 │ │
+                                                                                        │ mov byte [rax+0x01], r8b       │ │
+                                                                                        │ cmp edx, 0x08                  │ │
+                                                                                        │ jz 0x11b0                      │ │
+                                                                                        └────────────────────────────────┘ │
+                                                                                                f t                        │
+                                                                                                │ │                        │
+                                                                                                │ └─────────────┐          │
+                                                                                                ┌─┘               │          │
+                                                                                                │                 │          │
+                                                                                            ┌───────────────┐     │          │
+                                                                                            │  0x1159       │     │          │
+                                                                                            │ ; ascii       │     │          │
+                                                                                            │ mov esi, 0x2e │     │          │
+                                                                                            │ cmp edx, 0x02 │     │          │
+                                                                                            │ jz 0x11b0     │     │          │
+                                                                                            └───────────────┘     │          │
+                                                                                                    f t           │          │
+                                                                                                    │ │           │          │
+                                                                                                    │ └─┐         │          │
+                                                                                            ┌─────┘   │         │          │
+                                                                                            │         │ ┌───────┘          │
+                                                                                            │         │ │                  │
+                                                                                            │   ┌───────────────┐          │
+                                                                                            │   │  0x11b0       │          │
+                                                                                            │   │ ; ascii       │          │
+                                                                                            │   │ mov esi, 0x78 │          │
+                                                                                            │   │ jmp 0x1163    │          │
+                                                                                            │   └───────────────┘          │
+                                                                                            │       v                      │
+                                                                                            │       │                      │
+                                                        ┌──────────────────────────────────│───────┘                      │
+                                                        │ ┌────────────────────────────────┘                              │
+                                                        │ │                                                               │
+                                                    ┌────────────────────────────────┐                                      │
+                                                    │  0x1163                        │                                      │
+                                                    │ ; CODE XREF from main @ 0x11b5 │                                      │
+                                                    │ mov edi, edx                   │                                      │
+                                                    │ mov r11d, edx                  │                                      │
+                                                    │ mov byte [rax+0x02], sil       │                                      │
+                                                    │ ; 4294967291                   │                                      │
+                                                    │ and edi, 0xfffffffb            │                                      │
+                                                    │ cmp edi, 0x03                  │                                      │
+                                                    │ mov edi, r9d                   │                                      │
+                                                    │ cmovz edi, ecx                 │                                      │
+                                                    │ ; 4294967293                   │                                      │
+                                                    │ and r11d, 0xfffffffd           │                                      │
+                                                    │ mov byte [rax+0x03], dil       │                                      │
+                                                    │ cmp r11d, 0x04                 │                                      │
+                                                    │ jnz 0x10e8                     │                                      │
+                                                    └────────────────────────────────┘                                      │
+                                                        t f                                                               │
+                                                        │ │                                                               │
+                                            ┌──────────────┘ │                                                               │
+                                            │                └──────────────┐                                                │
+                                            │                               │                                                │
+                                        ┌───────────────────────────┐   ┌───────────────────────────┐                        │
+                                        │  0x10e8                   │   │  0x118a                   │                        │
+                                        │ ; ascii                   │   │ ; ascii                   │                        │
+                                        │ ; [0x2e:1]=0              │   │ ; [0x78:1]=3              │                        │
+                                        │ mov byte [rax+0x04], 0x2e │   │ mov byte [rax+0x04], 0x78 │                        │
+                                        │ cmp edx, 0x05             │   │ cmp edx, 0x05             │                        │
+                                        │ jnz 0x11d0                │   │ jz 0x10f5                 │                        │
+                                        └───────────────────────────┘   └───────────────────────────┘                        │
+                                            t f                             t f                                            │
+                                            │ │                             │ │                                            │
+                            ┌─────────────────┘ │                             │ │                                            │
+                            │                   └─────────────┐               │ │                                            │
+                            │                                 │ ┌─────────────┘ │                                            │
+                            │                                 │ │               └─────────┐                                  │
+                            │                                 │ │                         │                                  │
+                        ┌───────────────────────────┐   ┌────────────────────────┐    ┌───────────────────────────┐          │
+                        │  0x11d0                   │   │  0x10f5                │    │  0x1197                   │          │
+                        │ cmp r10b, 0x01            │   │ mov byte [arg_44h], cl │    │ ; ascii                   │          │
+                        │ mov byte [rax+0x08], sil  │   │ ; ascii                │    │ ; [0x2e:1]=0              │          │
+                        │ sbb esi, esi              │   │ mov r11d, 0x2e         │    │ mov byte [rax+0x05], 0x2e │          │
+                        │ add edx, 0x01             │   └────────────────────────┘    │ ; ascii                   │          │
+                        │ ; ascii                   │       v                         │ mov r11d, 0x78            │          │
+                        │ ; [0x2e:1]=0              │       │                         │ jmp 0x10ff                │          │
+                        │ mov byte [rax+0x05], 0x2e │       │                         └───────────────────────────┘          │
+                        │ ; 4294967222              │       │                             v                                  │
+                        │ and esi, 0xffffffb6       │       │                             │                                  │
+                        │ ; ascii                   │       │                             │                                  │
+                        │ ; [0x2e:1]=0              │       │                             │                                  │
+                        │ mov byte [rax+0x06], 0x2e │       │                             │                                  │
+                        │ add esi, 0x78             │       │                             │                                  │
+                        │ mov byte [rax+0x07], dil  │       │                             │                                  │
+                        │ mov byte [rax+0x09], r8b  │       │                             │                                  │
+                        │ mov byte [rax+0x0a], sil  │       │                             │                                  │
+                        │ ; 0xb                     │       │                             │                                  │
+                        │ cmp edx, 0x0b             │       │                             │                                  │
+                        │ jnz 0x112d                │       │                             │                                  │
+                        └───────────────────────────┘       │                             │                                  │
+                                f t                         │                             │                                  │
+                                │ │                         │                             │                                  │
+                                │ └─────┐                   │                             │                                  │
+                                └───────────────────────────│───────────────┐             │                                  │
+                                        │                   └─────────────────────────┐   │                                  │
+                                        │                                   │         │ ┌─┘                                  │
+                                        │                                   │         │ │                                    │
+                                        │                                   │   ┌────────────────────────────────┐           │
+                                        │                                   │   │  0x10ff                        │           │
+                                        │                                   │   │ ; CODE XREF from main @ 0x11a1 │           │
+                                        │                                   │   │ mov byte [rax+0x08], sil       │           │
+                                        │                                   │   │ ; ascii                        │           │
+                                        │                                   │   │ mov esi, 0x2e                  │           │
+                                        │                                   │   │ mov byte [rax+0x06], r11b      │           │
+                                        │                                   │   │ mov byte [rax+0x07], dil       │           │
+                                        │                                   │   │ mov byte [rax+0x09], r8b       │           │
+                                        │                                   │   │ test r10b, r10b                │           │
+                                        │                                   │   │ jnz 0x11c0                     │           │
+                                        │                                   │   └────────────────────────────────┘           │
+                                        │                                   │           f t                                  │
+                                        │                                   │           │ │                                  │
+                                        │                                   │          ┌│─┘                                  │
+                                        │       ┌───────────────────────────│───────────┘                                    │
+                                        │       │                           │          │                                     │
+                                        │   ┌──────────────────────────┐    │      ┌───────────────────────────┐             │
+                                        │   │  0x111d                  │    │      │  0x11c0                   │             │
+                                        │   │ add edx, 0x01            │    │      │ ; ascii                   │             │
+                                        │   │ mov byte [rax+0x0a], sil │    │      │ ; [0x78:1]=3              │             │
+                                        │   │ ; 0xb                    │    │      │ mov byte [rax+0x0a], 0x78 │             │
+                                        │   │ cmp edx, 0x0b            │    │      │ add edx, 0x01             │             │
+                                        │   │ jz 0x1200                │    │      │ jmp 0x112d                │             │
+                                        │   └──────────────────────────┘    │      └───────────────────────────┘             │
+                                        │         t f                       │          v                                     │
+                                        │         │ │                       │          │                                     │
+                                        │         │ │                       │┌─────────┘                                     │
+                                    ┌│─────────┘ │                       ││                                               │
+                                    ││           └──────────────────────┐││                                               │
+                                    │└┐                                 │││                                               │
+                                    │ │                                 │└──┐                                             │
+                                    │ │                                 │ │ │                                             │
+                                ┌──────────────────────────────┐    ┌────────────────────────────────┐                      │
+                                │  0x1200                      │    │  0x112d                        │                      │
+                                │ lea rbp, qword [rbx+0x0b]    │    │ ; CODE XREF from main @ 0x11c7 │                      │
+                                │ lea r13, qword [rbx+0x84]    │    │ ; 0xa                          │                      │
+                                │ ; 0x2004                     │    │ cmp edx, 0x0a                  │                      │
+                                │ ; "%c "                      │    │ mov esi, ecx                   │                      │
+                                │ lea r12, qword data.00002004 │    │ cmovnz esi, r9d                │                      │
+                                │ nop word [rax+rax*1], ax     │    │ setz r10b                      │                      │
+                                └──────────────────────────────┘    │ ; 0xb                          │                      │
+                                    v                               │ add rax, 0x0b                  │                      │
+                                    │                               └────────────────────────────────┘                      │
+                                    │                                   v                                                   │
+                                    │                                   │                                                   │
+                                    └────┐                              │                                                   │
+                                        │                              └───────────────────────────────────────────────────┘
+                                ┌──────────┐
+                                │        │ │
+                                │  ┌─────────────────────────┐
+                                │  │  0x1218                 │
+                                │  │ lea rbx, qword [var_bh] │
+                                │  │ nop dword [rax], eax    │
+                                │  └─────────────────────────┘
+                                │      v
+                                │      │
+                                │      └┐
+                                │┌────────┐
+                                ││      │ │
+                                ││┌───────────────────────────┐
+                                │││  0x1220                   │
+                                │││ movsx edx, byte [rbx]     │
+                                │││ mov rsi, r12              │
+                                │││ mov edi, 0x01             │
+                                │││ xor eax, eax              │
+                                │││ add rbx, 0x01             │
+                                │││ call sym.imp.__printf_chk │
+                                │││ cmp rbx, rbp              │
+                                │││ jnz 0x1220                │
+                                ││└───────────────────────────┘
+                                ││        f t
+                                ││        │ │
+                                │└──────────┘
+                                │     ┌───┘
+                                │ ┌───────────────────────────┐
+                                │ │  0x123b                   │
+                                │ │ mov edi, 0x0a             │
+                                │ │ lea rbp, qword [rbx+0x0b] │
+                                │ │ call sym.imp.putchar      │
+                                │ │ cmp r13, rbp              │
+                                │ │ jnz 0x1218                │
+                                │ └───────────────────────────┘
+                                │         f t
+                                │         │ │
+                                └───────────┘
+                                    ┌───┘
+                                ┌──────────────────────────┐
+                                │  0x124e                  │
+                                │ mov rax, qword [var_30h] │
+                                │ xor rax, qword fs:[0x28] │
+                                │ jnz 0x1271               │
+                                └──────────────────────────┘
+                                        t f
+                                        │ │
+                    ┌─────────────────┘ │
+                    │                   └───────────────┐
+                    │                                   │
+                ┌───────────────────────────────┐   ┌───────────────┐
+                │  0x1271                       │   │  0x1261       │
+                │ call sym.imp.__stack_chk_fail │   │ add rsp, 0x98 │
+                │ nop word [rax+rax*1], ax      │   │ xor eax, eax  │
+                └───────────────────────────────┘   │ pop rbx       │
+                    v                               │ pop rbp       │
+                    │                               │ pop r12       │
+                    │                               │ pop r13       │
+                    │                               │ ret           │
+                    │                               └───────────────┘
+                    │
+                    │
+    ┌──────────────────┘
+    │
+┌─────────────────────────────────────────────────────────────────────┐
+│  0x1280                                                             │
+│   ;-- _start:                                                       │
+│ entry0();                                                           │
+│ endbr64                                                             │
+│ xor ebp, ebp                                                        │
+│ mov r9, rdx                                                         │
+│ pop rsi                                                             │
+│ mov rdx, rsp                                                        │
+│ and rsp, 0xfffffffffffffff0                                         │
+│ push rax                                                            │
+│ push rsp                                                            │
+│ ; 0x13e0                                                            │
+│ lea r8, qword [sym.__libc_csu_fini]                                 │
+│ ; 0x1370                                                            │
+│ lea rcx, qword [sym.__libc_csu_init]                                │
+│ ; 0x10a0                                                            │
+│ lea rdi, qword [main]                                               │
+│ ; [reloc.__libc_start_main:8]=0x4040 reloc.target.__libc_start_main │
+│ ; "@@"                                                              │
+│ call qword [reloc.__libc_start_main]                                │
+│ hlt                                                                 │
+└─────────────────────────────────────────────────────────────────────┘
+
+* Disasm
+#+begin_src  asm
+00000000000010a0 <main>:
+    10a0:       f3 0f 1e fa             endbr64
+    10a4:       41 55                   push   r13
+    10a6:       31 d2                   xor    edx,edx
+    10a8:       41 ba 01 00 00 00       mov    r10d,0x1
+    10ae:       be 78 00 00 00          mov    esi,0x78
+    10b3:       41 54                   push   r12
+    10b5:       b9 78 00 00 00          mov    ecx,0x78
+    10ba:       41 b9 2e 00 00 00       mov    r9d,0x2e
+    10c0:       55                      push   rbp
+    10c1:       53                      push   rbx
+    10c2:       48 81 ec 98 00 00 00    sub    rsp,0x98
+    10c9:       64 48 8b 04 25 28 00    mov    rax,QWORD PTR fs:0x28
+    10d0:       00 00
+    10d2:       48 89 84 24 88 00 00    mov    QWORD PTR [rsp+0x88],rax
+    10d9:       00
+    10da:       31 c0                   xor    eax,eax
+    10dc:       48 89 e3                mov    rbx,rsp
+    10df:       48 89 d8                mov    rax,rbx
+    10e2:       eb 5a                   jmp    113e <main+0x9e>
+    10e4:       0f 1f 40 00             nop    DWORD PTR [rax+0x0]
+    10e8:       c6 40 04 2e             mov    BYTE PTR [rax+0x4],0x2e
+    10ec:       83 fa 05                cmp    edx,0x5
+    10ef:       0f 85 db 00 00 00       jne    11d0 <main+0x130>
+    10f5:       88 4c 24 3c             mov    BYTE PTR [rsp+0x3c],cl
+    10f9:       41 bb 2e 00 00 00       mov    r11d,0x2e
+    10ff:       40 88 70 08             mov    BYTE PTR [rax+0x8],sil
+    1103:       be 2e 00 00 00          mov    esi,0x2e
+    1108:       44 88 58 06             mov    BYTE PTR [rax+0x6],r11b
+    110c:       40 88 78 07             mov    BYTE PTR [rax+0x7],dil
+    1110:       44 88 40 09             mov    BYTE PTR [rax+0x9],r8b
+    1114:       45 84 d2                test   r10b,r10b
+    1117:       0f 85 a3 00 00 00       jne    11c0 <main+0x120>
+    111d:       83 c2 01                add    edx,0x1
+    1120:       40 88 70 0a             mov    BYTE PTR [rax+0xa],sil
+    1124:       83 fa 0b                cmp    edx,0xb
+    1127:       0f 84 d3 00 00 00       je     1200 <main+0x160>
+    112d:       83 fa 0a                cmp    edx,0xa
+    1130:       89 ce                   mov    esi,ecx
+    1132:       41 0f 45 f1             cmovne esi,r9d
+    1136:       41 0f 94 c2             sete   r10b
+    113a:       48 83 c0 0b             add    rax,0xb
+    113e:       40 88 30                mov    BYTE PTR [rax],sil
+    1141:       89 d6                   mov    esi,edx
+    1143:       45 89 c8                mov    r8d,r9d
+    1146:       83 e6 f7                and    esi,0xfffffff7
+    1149:       83 fe 01                cmp    esi,0x1
+    114c:       44 0f 44 c1             cmove  r8d,ecx
+    1150:       44 88 40 01             mov    BYTE PTR [rax+0x1],r8b
+    1154:       83 fa 08                cmp    edx,0x8
+    1157:       74 57                   je     11b0 <main+0x110>
+    1159:       be 2e 00 00 00          mov    esi,0x2e
+    115e:       83 fa 02                cmp    edx,0x2
+    1161:       74 4d                   je     11b0 <main+0x110>
+    1163:       89 d7                   mov    edi,edx
+    1165:       41 89 d3                mov    r11d,edx
+    1168:       40 88 70 02             mov    BYTE PTR [rax+0x2],sil
+    116c:       83 e7 fb                and    edi,0xfffffffb
+    116f:       83 ff 03                cmp    edi,0x3
+    1172:       44 89 cf                mov    edi,r9d
+    1175:       0f 44 f9                cmove  edi,ecx
+    1178:       41 83 e3 fd             and    r11d,0xfffffffd
+    117c:       40 88 78 03             mov    BYTE PTR [rax+0x3],dil
+    1180:       41 83 fb 04             cmp    r11d,0x4
+    1184:       0f 85 5e ff ff ff       jne    10e8 <main+0x48>
+    118a:       c6 40 04 78             mov    BYTE PTR [rax+0x4],0x78
+    118e:       83 fa 05                cmp    edx,0x5
+    1191:       0f 84 5e ff ff ff       je     10f5 <main+0x55>
+    1197:       c6 40 05 2e             mov    BYTE PTR [rax+0x5],0x2e
+    119b:       41 bb 78 00 00 00       mov    r11d,0x78
+    11a1:       e9 59 ff ff ff          jmp    10ff <main+0x5f>
+    11a6:       66 2e 0f 1f 84 00 00    nop    WORD PTR cs:[rax+rax*1+0x0]
+    11ad:       00 00 00
+    11b0:       be 78 00 00 00          mov    esi,0x78
+    11b5:       eb ac                   jmp    1163 <main+0xc3>
+    11b7:       66 0f 1f 84 00 00 00    nop    WORD PTR [rax+rax*1+0x0]
+    11be:       00 00
+    11c0:       c6 40 0a 78             mov    BYTE PTR [rax+0xa],0x78
+    11c4:       83 c2 01                add    edx,0x1
+    11c7:       e9 61 ff ff ff          jmp    112d <main+0x8d>
+    11cc:       0f 1f 40 00             nop    DWORD PTR [rax+0x0]
+    11d0:       41 80 fa 01             cmp    r10b,0x1
+    11d4:       40 88 70 08             mov    BYTE PTR [rax+0x8],sil
+    11d8:       19 f6                   sbb    esi,esi
+    11da:       83 c2 01                add    edx,0x1
+    11dd:       c6 40 05 2e             mov    BYTE PTR [rax+0x5],0x2e
+    11e1:       83 e6 b6                and    esi,0xffffffb6
+    11e4:       c6 40 06 2e             mov    BYTE PTR [rax+0x6],0x2e
+    11e8:       83 c6 78                add    esi,0x78
+    11eb:       40 88 78 07             mov    BYTE PTR [rax+0x7],dil
+    11ef:       44 88 40 09             mov    BYTE PTR [rax+0x9],r8b
+    11f3:       40 88 70 0a             mov    BYTE PTR [rax+0xa],sil
+    11f7:       83 fa 0b                cmp    edx,0xb
+    11fa:       0f 85 2d ff ff ff       jne    112d <main+0x8d>
+    1200:       48 8d 6b 0b             lea    rbp,[rbx+0xb]
+    1204:       4c 8d ab 84 00 00 00    lea    r13,[rbx+0x84]
+    120b:       4c 8d 25 f2 0d 00 00    lea    r12,[rip+0xdf2]        # 2004 <_IO_stdin_used+0x4>
+    1212:       66 0f 1f 44 00 00       nop    WORD PTR [rax+rax*1+0x0]
+    1218:       48 8d 5d f5             lea    rbx,[rbp-0xb]
+    121c:       0f 1f 40 00             nop    DWORD PTR [rax+0x0]
+    1220:       0f be 13                movsx  edx,BYTE PTR [rbx]
+    1223:       4c 89 e6                mov    rsi,r12
+    1226:       bf 01 00 00 00          mov    edi,0x1
+    122b:       31 c0                   xor    eax,eax
+    122d:       48 83 c3 01             add    rbx,0x1
+    1231:       e8 5a fe ff ff          call   1090 <__printf_chk@plt>
+    1236:       48 39 eb                cmp    rbx,rbp
+    1239:       75 e5                   jne    1220 <main+0x180>
+    123b:       bf 0a 00 00 00          mov    edi,0xa
+    1240:       48 8d 6b 0b             lea    rbp,[rbx+0xb]
+    1244:       e8 27 fe ff ff          call   1070 <putchar@plt>
+    1249:       49 39 ed                cmp    r13,rbp
+    124c:       75 ca                   jne    1218 <main+0x178>
+    124e:       48 8b 84 24 88 00 00    mov    rax,QWORD PTR [rsp+0x88]
+    1255:       00
+    1256:       64 48 33 04 25 28 00    xor    rax,QWORD PTR fs:0x28
+    125d:       00 00
+    125f:       75 10                   jne    1271 <main+0x1d1>
+    1261:       48 81 c4 98 00 00 00    add    rsp,0x98
+    1268:       31 c0                   xor    eax,eax
+    126a:       5b                      pop    rbx
+    126b:       5d                      pop    rbp
+    126c:       41 5c                   pop    r12
+    126e:       41 5d                   pop    r13
+    1270:       c3                      ret
+    1271:       e8 0a fe ff ff          call   1080 <__stack_chk_fail@plt>
+    1276:       66 2e 0f 1f 84 00 00    nop    WORD PTR cs:[rax+rax*1+0x0]
+    127d:       00 00 00
+
+0000000000001280 <_start>:
+    1280:       f3 0f 1e fa             endbr64
+    1284:       31 ed                   xor    ebp,ebp
+    1286:       49 89 d1                mov    r9,rdx
+    1289:       5e                      pop    rsi
+    128a:       48 89 e2                mov    rdx,rsp
+    128d:       48 83 e4 f0             and    rsp,0xfffffffffffffff0
+    1291:       50                      push   rax
+    1292:       54                      push   rsp
+    1293:       4c 8d 05 46 01 00 00    lea    r8,[rip+0x146]        # 13e0 <__libc_csu_fini>
+    129a:       48 8d 0d cf 00 00 00    lea    rcx,[rip+0xcf]        # 1370 <__libc_csu_init>
+    12a1:       48 8d 3d f8 fd ff ff    lea    rdi,[rip+0xfffffffffffffdf8]        # 10a0 <main>
+    12a8:       ff 15 32 2d 00 00       call   QWORD PTR [rip+0x2d32]        # 3fe0 <__libc_start_main@GLIBC_2.2.5>
+    12ae:       f4                      hlt
+    12af:       90                      nop
+#+end_src
+
+
+* Notes
+** main
+    ┌──────────────────────────────────────────┐
+    │  0x10a0                                  │
+    │ ; [15] -r-x section size 837 named .text │
+    │   ; DATA XREF from entry0 @ 0x12a1       │
+    │   ;-- section..text:                     │
+    │   ;-- .text:                             │
+    │ main(unknown_t arg_44h);                 │
+    │ ; var unknown_t var_30h @ stack - 0x30   │
+    │ ; var unknown_t var_bh @ stack - 0xb     │
+    │ ; arg unknown_t arg_44h @ stack + 0x44   │
+    │ endbr64                                  │ // -fcf-protection
+    │ push r13                                 │ // Компилятор сохраняет значения rbx, rbp, r12-15
+    │ xor edx, edx                             │  // edx = 0
+    │ mov r10d, 0x01                           │  // r10d = 0x01
+    │ ; ascii                                  │
+    │ mov esi, 0x78                            │ // константы "x" = esi
+    │ push r12                                 │
+    │ ; ascii                                  │
+    │ mov ecx, 0x78                            │ // константы "x" = ecx
+    │ ; ascii                                  │
+    │ mov r9d, 0x2e                            │ // константы "." = r9d
+    │ push rbp                                 │ // rbp используется как обычный регистр
+    │ push rbx                                 │
+    │ sub rsp, 0x98                            │ // используем 152 байт стека
+    │ mov rax, qword fs:[0x28]                 │ // canary rax <- значение канарейки -fstack-protector
+    │ mov qword [var_30h], rax                 │ // stack canary slot = rax
+    │ xor eax, eax                             │
+    │ mov rbx, rsp                             │ // rsp сохраняется в rbx !! и будет использоваться как база указателя
+    │ mov rax, rbx                             │
+    │ jmp 0x113e                               │
+    └──────────────────────────────────────────┘
+rbp - обычный general-purpose регистр
+frame pointer omission (-fomit-frame-pointer)
+*** регистры
+rbp, rbx, r12, r13 - callee saved регистры
+если функция меняет rbx/rbp/r12-r15
+она обязана восстановить их перед ret
+*** endbr64
+ CET (Control-flow Enforcement Technology) - защита от ROP-атак. Означает что функция является легитимной целью для непрямых переходов (call/jmp).
+endbr64 - скомпилирован с -fcf-protection.
+
+
+** 0x113e
+#+begin_src c
+// main
+int edx = 0;
+char r10d = 0x01;
+char esi = 'x';
+char ecx = 'x';
+char r9d = '.'
+char *rax = buf;
+
+while (edx != 11) {
+    // 0x113e
+    rax[0] = esi; // первый проход = 'x'
+    char r8d = ((edx & ~8) == 1) ? 'x' : '.';
+    rax[1] = r8d; // первый проход = '.'
+
+    /* if (edx == 0x08) goto 0x11b0; // if true esi = 'x' => jmp 0x1163 */
+
+    /* // 0x1159 */
+    /* esi = '.' */
+    /* if (edx == 0x02) goto 0x11b0; // if true esi = 'x' => jmp 0x1163 */
+    if (edx == 8 || edx == 2) {
+      esi = 'x';
+      goto 0x1163;
+    } else {
+      esi = '.';
+    }
+
+    // 0x1163
+    0x1163:
+    rax[2] = esi; // первый проход = '.' потом от 0x112d
+    char edi = ((edx & ~4) == 3) ? 'x' : '.';
+    rax[3] = edi; // первый проход = '.'
+    if ((edx & ~2) != 4) goto 0x10e8;
+
+    // 0x10e8
+    rax[4] = '.'; // каждый m[4][n] = '.' ??
+    if (edx != 5) goto 0x11d0;
+
+    // 0x11d0
+    bool CF = (r10d < 1);
+    rax[8] = esi; // первый проход = '.' и будет равен rax[2]
+    esi = CF ? 0xFFFFFFFF : 0x00000000;
+    esi = (esi & 0xFFFFFFB6) + 0x78; // 0x0 -> 'x' else '.'
+    edx += 1;
+    rax[5] = '.'; // каждый m[5][n] = '.' ?? // edge на проверка edx != 5
+    rax[6] = '.'; // каждый m[6][n] = '.' ?? // edge на проверке edx & ~2
+    rax[7] = edi; // первый проход = '.' и будет равен rax[3]
+    rax[9] = r8d; // первый проход = '.' и будет равен rax[1]
+    rax[10] = esi; // первый проход = 'x'
+
+    // 0x112d
+    esi = (edx == 10) ? 'x' : '.';
+    r10d = (edx == 10) ? 1 : 0;
+    rax += 11;
+#+end_src
+
+
+x . . . . . . . . . x
+. x . . . . . . . x .
+. . x . . . . x . . .
+
+
+#+BEGIN_SRC calc
+and(16#2, not(16#8))
+#+END_SRC
+
+#+RESULTS:
+: 2
+
+#+BEGIN_SRC calc
+and(16#6, not(16#2))
+#+END_SRC
+
+#+RESULTS:
+: 4
+
+
+┌────────────────────────────────┐
+│  0x113e                        │
+│ ; code xref from main @ 0x10e2 │
+│ mov byte [rax], sil            │  // *(u char*)(rax) = sil // sil = младший rsi байт // пишем 0x78 ('x') по адресу rax в младший байт
+│ mov esi, edx                   │  // esi = 0 // в первом проходе
+│ mov r8d, r9d                   │  // r8d = "." = 0x2e
+│ ; 4294967287                   │
+│ and esi, 0xfffffff7            │  // значение esi побитово сравнивается с 0xf...f7 = 11....0111 - обнуляется 4 бит (в первом прогоне это всегда 0, может мы сюда еще придем)
+│ cmp esi, 0x01                  │  // сравниваем результат с 0x01
+│ cmovz r8d, ecx                 │  // If ZF=1 then condition is satisfied, otherwise it will be skipped. если zf поднялся, то esi = 0x01 => ecx ("x") = r8d
+│ mov byte [rax+0x01], r8b       │  //
+│ cmp edx, 0x08                  │
+│ jz 0x11b0                      │
+└────────────────────────────────┘
+│  0x1159       │
+│ ; ascii       │
+│ mov esi, 0x2e │
+│ cmp edx, 0x02 │
+│ jz 0x11b0     │
+┌────────────────────────────────┐
+│  0x1163                        │
+│ ; CODE XREF from main @ 0x11b5 │
+│ mov edi, edx                   │ // edi = 0
+│ mov r11d, edx                  │ // r11d = 0
+│ mov byte [rax+0x02], sil       │ // *(char *)rax[i+2] = 'x'
+│ ; 4294967291                   │
+│ and edi, 0xfffffffb            │ //
+│ cmp edi, 0x03                  │ //
+│ mov edi, r9d                   │ // edi = '.'
+│ cmovz edi, ecx                 │
+│ ; 4294967293                   │
+│ and r11d, 0xfffffffd           │
+│ mov byte [rax+0x03], dil       │
+│ cmp r11d, 0x04                 │
+│ jnz 0x10e8                     │
+└────────────────────────────────┘
+┌───────────────────────────┐
+│  0x10e8                   │
+│ ; ascii                   │
+│ ; [0x2e:1]=0              │
+│ mov byte [rax+0x04], 0x2e │
+│ cmp edx, 0x05             │
+│ jnz 0x11d0                │
+└───────────────────────────┘
+┌───────────────────────────┐
+│  0x11d0                   │
+│ cmp r10b, 0x01            │ // true ZF
+│ mov byte [rax+0x08], sil  │
+│ sbb esi, esi              │ // sub with borrow esi-esi = 0 if r10b >= 0x01 else esi-esi-1 = 0xffffffff
+│ add edx, 0x01             │ // edx = 1 !!
+│ ; ascii                   │
+│ ; [0x2e:1]=0              │
+│ mov byte [rax+0x05], 0x2e │ //
+│ ; 4294967222              │
+│ and esi, 0xffffffb6       │ // esi = 0 or 0xffffffb6 & 0xffffffff = 0xffffffb6
+│ ; ascii                   │
+│ ; [0x2e:1]=0              │
+│ mov byte [rax+0x06], 0x2e │ [i+6] = '.'
+│ add esi, 0x78             │ // if esi = 0 => 'x' else 0xffffffb6 + 0x78 = 0x1000002e ~ '.' !!!!
+│ mov byte [rax+0x07], dil  │
+│ mov byte [rax+0x09], r8b  │
+│ mov byte [rax+0x0a], sil  │
+│ ; 0xb                     │
+│ cmp edx, 0x0b             │
+│ jnz 0x112d                │
+└───────────────────────────┘
+┌────────────────────────────────┐
+│  0x112d                        │
+│ ; CODE XREF from main @ 0x11c7 │
+│ ; 0xa                          │
+│ cmp edx, 0x0a                  │
+│ mov esi, ecx                   │ // ecx = '0x78'
+│ cmovnz esi, r9d                │ //
+│ setz r10b                      │
+│ ; 0xb                          │
+│ add rax, 0x0b                  │
+└────────────────────────────────┘
+│  0x113e                        │
+│ ; code xref from main @ 0x10e2 │
+│ mov byte [rax], sil            │
+│ mov esi, edx                   │
+│ mov r8d, r9d                   │
+│ ; 4294967287                   │
+│ and esi, 0xfffffff7            │
+│ cmp esi, 0x01                  │
+│ cmovz r8d, ecx                 │
+│ mov byte [rax+0x01], r8b       │
+│ cmp edx, 0x08                  │
+│ jz 0x11b0                      │
+
+if блок при edx == 0x08, 0x02
+    │   ┌───────────────┐          │
+    │   │  0x11b0       │          │
+    │   │ ; ascii       │          │
+    │   │ mov esi, 0x78 │          │
+    │   │ jmp 0x1163    │          │
+    │   └───────────────┘          │

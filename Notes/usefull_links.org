@@ -1,3 +1,4 @@
 #+title: Usefull Links
 
 * [[https://asm-editor.specy.app/projects/LuAuIxA][ASM_Editor]] :asm:sandbox:link:
+* [[https://github.com/kairis/isadetect][ML Arch detector]], [[https://github.com/google/magika][magika]] :asm:detect:

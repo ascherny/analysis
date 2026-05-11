@@ -1,0 +1,155 @@
+#+title: Rust basics
+
+* Типы :rust:type:
+** Массив
+#+begin_src rust
+let array_5: [u8; 5] = [1, 2, 3, 4, 5];
+// let four_bytes = three_bytes; // Ошибка разные размеры [3] vs [4]
+#+end_src
+Фиксированная последовательность, размер которой [[*Размер типа][известен]] на момент компиляции
+** Вектор
+#+begin_src rust :result output
+let mut dynamic_array: Vec<u8> = Vec::new();
+
+dynamic_array.push(10);  // добавили байт
+dynamic_array.push(20);  // добавили ещё
+dynamic_array.push(30);  // добавили третий
+
+println!("Сейчас элементов: {}", dynamic_array.len()); // 3
+
+dynamic_array.pop();  // удалили последний
+
+println!("Сейчас элементов: {}", dynamic_array.len()); // 3
+#+end_src
+
+#+RESULTS:
+: Сейчас элементов: 3
+: Сейчас элементов: 2
+
+Vec - динамический массив который хранит данные в куче
+vec должен быть mut
+
+** Срез
+#+begin_src rust :result output :flags "-C debug-assertions"
+let array = [1, 2, 3, 4, 5];
+let slice: &[u8] = &array[1..4];
+//           ^^^^^ тип: ссылка на срез
+
+println!("slice[0] = {}", slice[0]); // 2
+println!("slice[1] = {}", slice[1]); // 3
+println!("slice[2] = {}", slice[2]); // 4
+// println!("slice[3] = {}", slice[3]); // err
+#+end_src
+#+RESULTS:
+: slice[0] = 2
+: slice[1] = 3
+: slice[2] = 4
+
+
+
+
+Срез это ссылка на часть данных
+Определяется полуинтервалом [a..b)
+
+** enum + pattern matching
+#+begin_src rust
+enum Status {
+    Ok,                    // вариант без данных
+    Error,                 // вариант без данных
+    Timeout(u64),          // вариант С данными (время ожидания)
+    Custom(String),        // вариант со строкой
+}
+
+fn main() {
+    let status1 = Status::Ok;
+    let status2 = Status::Timeout(5000);    // хранит число 5000
+    let status3 = Status::Custom("Failed".to_string());
+
+    // Pattern matching для доступа к данным:
+    match status2 {
+        Status::Ok => println!("Успех"),
+        Status::Error => println!("Ошибка"),
+        Status::Timeout(ms) => println!("Таймаут через {} мс", ms),
+        Status::Custom(msg) => println!("Ошибка: {}", msg),
+    }
+}
+
+#+end_src
+
+** usize
+Целочисленный тип размер которого завист от архитектуры процессора
+
+** {S,s}elf :rust:self:
+self это значение экземпляра
+Self это тип
+
+* Общие заметки :rust:
+** Размер типа :rust:type:size:
+#sizeof
+Типы имеют фиксированный размер в памяти во время компиляции
+u8: байт
+u16: 2 байта
+u32: 4 байта
+u64: 8 байт
+
+** Обработки result, option :rust:result:option:
+#+begin_src rust
+enum Option<T> {
+    Some(T),  // Значение есть
+    None,     // Значения нет
+}
+fn find_even(numbers: &[i32]) -> Option<&i32> {
+    for num in numbers {
+        if num % 2 == 0 {
+            return Some(num);
+        }
+    }
+    None
+}
+
+enum Result<T, E> {
+    Ok(T),   // Успех с результатом типа T
+    Err(E),  // Ошибка типа E
+}
+fn divide(dividend: f64, divisor: f64) -> Result<f64, String> {
+    if divisor == 0.0 {
+        Err(String::from("Деление на ноль!"))
+    } else {
+        Ok(dividend / divisor)
+    }
+}
+
+fn main() {
+    let result = divide(10.0, 0.0);
+
+    match result {
+        Ok(value) => println!("Результат: {}", value),
+        Err(error) => println!("Ошибка: {}", error),
+    }
+}
+
+
+#+end_src
+
+** lifetime
+<'a1 'a2 ..> именованное время жизни ссылки & которое гарантирует что ссылка будет жить не больше чем переменная на которую она ссылается
+
+- Ограничение
+- Приведение
+- Анаморфизм
+- 'static
+
+** Форматы вывода
+| Формат | Трейт    | Назначение                          | Пример вывода                     |
+| {}     | Display  | Для пользователей, красивый вывод   | 42 или Hello                      |
+| {:?}   | Debug    | Для разработчиков, отладка          | Person { name: "Alice", age: 30 } |
+| {:#?}  | Debug    | "Pretty" Debug (с отступами)        | Многострочный        |
+| {:b}   | Binary   | Двоичный формат                     | 101010                            |
+| {:x}   | LowerHex | Шестнадцатеричный (нижний регистр)  | deadbeef                          |
+| {:X}   | UpperHex | Шестнадцатеричный (верхний регистр) | DEADBEEF                          |
+| {:o}   | Octal    | Восьмеричный формат                 | 755                               |
+| {:e}   | LowerExp | Экспоненциальный (нижний регистр)   | 1.23e4                            |
+* Задачи
+** Написать свой тип usize
+
+

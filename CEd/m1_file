@@ -1,0 +1,11 @@
+#+title: M1 Arch
+
+* Алгоритм
+1. Формат
+2. Строки
+3. Тип исполняемого файла
+
+
+   1. file, magika, DiE
+   2. strings -t [offset] d,o,x [dec, oct, hex]
+   3.
