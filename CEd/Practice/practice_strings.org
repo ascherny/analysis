@@ -1,0 +1,228 @@
+#+title: Practice Strings
+
+#+begin_src bash
+Practice % strings practice_strings
+    /lib64/ld-linux-x86-64.so.2
+    libcrypto.so.1.1
+    __gmon_start__
+    _ITM_deregisterTMCloneTable
+    _ITM_registerTMCloneTable
+    AES_set_decrypt_key
+    AES_cbc_encrypt
+    libc.so.6
+    puts
+    __stack_chk_fail
+    stdin
+    fgets
+    stdout
+    fwrite
+    __cxa_finalize
+    __libc_start_main
+    OPENSSL_1_1_0
+    GLIBC_2.4
+    GLIBC_2.2.5
+    u+UH
+    dH34%(
+    []A\A]A^A_
+    :*3$"
+    'f#f'&f
+    6!3tEg
+    jpGCC: (Ubuntu 9.4.0-1ubuntu1~20.04.2) 9.4.0
+    crtstuff.c
+    deregister_tm_clones
+    __do_global_dtors_aux
+    completed.8061
+    __do_global_dtors_aux_fini_array_entry
+    frame_dummy
+    __frame_dummy_init_array_entry
+    task_crypto_strings.c
+    __FRAME_END__
+    __GNU_EH_FRAME_HDR
+    _GLOBAL_OFFSET_TABLE_
+    __init_array_end
+    __init_array_start
+    _DYNAMIC
+    __libc_csu_fini
+    ciphertext
+    __gmon_start__
+    puts@@GLIBC_2.2.5
+    __libc_start_main@@GLIBC_2.2.5
+    fgets@@GLIBC_2.2.5
+    _ITM_deregisterTMCloneTable
+    enc_key
+    _IO_stdin_used
+    _ITM_registerTMCloneTable
+    __data_start
+    __cxa_finalize@@GLIBC_2.2.5
+    stdin@@GLIBC_2.2.5
+    __TMC_END__
+    __dso_handle
+    __libc_csu_init
+    __bss_start
+    __stack_chk_fail@@GLIBC_2.4
+    AES_cbc_encrypt@@OPENSSL_1_1_0
+    fwrite@@GLIBC_2.2.5
+    _edata
+    AES_set_decrypt_key@@OPENSSL_1_1_0
+    stdout@@GLIBC_2.2.5
+    real_key_masked
+    main
+    .symtab
+    .strtab
+    .shstrtab
+    .interp
+    .note.gnu.property
+    .note.gnu.build-id
+    .note.ABI-tag
+    .gnu.hash
+    .dynsym
+    .dynstr
+    .gnu.version
+    .gnu.version_r
+    .rela.dyn
+    .rela.plt
+    .init
+    .plt.got
+    .plt.sec
+    .text
+    .fini
+    .rodata
+    .eh_frame_hdr
+    .eh_frame
+    .init_array
+    .fini_array
+    .dynamic
+    .data
+    .bss
+    .comment
+#+end_src
+
+#+begin_src c
+int __fastcall main(int argc, const char **argv, const char **envp)
+{
+  int v4; // [rsp+4h] [rbp-17Ch]
+  int i; // [rsp+8h] [rbp-178h]
+  int j; // [rsp+Ch] [rbp-174h]
+  _BYTE v7[256]; // [rsp+10h] [rbp-170h] BYREF
+  _BYTE v8[16]; // [rsp+110h] [rbp-70h] BYREF
+  _QWORD v9[2]; // [rsp+120h] [rbp-60h] BYREF
+  char s[32]; // [rsp+130h] [rbp-50h] BYREF
+  _BYTE ptr[40]; // [rsp+150h] [rbp-30h] BYREF
+  unsigned __int64 v12; // [rsp+178h] [rbp-8h]
+
+  v12 = __readfsqword(0x28u);
+  fgets(s, 32, stdin); // Читаем из stdin 31+\0
+  v4 = 1; // t or f ?
+  for ( i = 0; i <= 15; ++i ) // проверяем первые 16 байт
+  {
+    if ( ((unsigned __int8)s[i] ^ 0x55) != enc_key[i] ) // XOR с 0x55
+    {
+      v4 = 0;
+      break;
+    }
+  }
+  if ( !v4 )
+    return 0;
+  for ( j = 0; j <= 15; ++j )
+    v8[j] = real_key_masked[j] ^ 0x55;
+  AES_set_decrypt_key(v8, 128, v7);
+  v9[0] = iv;
+  v9[1] = qword_4048;
+  AES_cbc_encrypt(&ciphertext, ptr, 32, v7, v9, 0);
+  fwrite(ptr, 1u, 0x20u, stdout);
+  puts(&::s);
+  return 0;
+}
+#+end_src
+
+#+begin_src asm
+.data:0000000000004020                 public enc_key
+.data:0000000000004020 ; _BYTE enc_key[16]
+.data:0000000000004020 enc_key         db 27h, 66h, 23h, 66h, 27h, 26h, 66h, 0Ah, 61h, 30h, 26h
+.data:0000000000004020                                         ; DATA XREF: main+66↑o
+.data:000000000000402B                 db 0Ah, 36h, 21h, 33h, 74h
+.data:0000000000004030                 public real_key_masked
+.data:0000000000004030 ; _BYTE real_key_masked[16]
+.data:0000000000004030 real_key_masked db 45h, 67h, 1, 23h, 0CDh, 0EFh, 89h, 0ABh, 46h, 62h, 17h
+.data:0000000000004030                                         ; DATA XREF: main+B8↑o
+.data:000000000000403B                 db 71h, 33h, 0CCh, 0FEh, 98h
+.data:0000000000004040                 public iv
+.data:0000000000004040 iv              dq 706050403020100h     ; DATA XREF: main+FC↑r
+.data:0000000000004048 qword_4048      dq 0F0E0D0C0B0A0908h    ; DATA XREF: main+103↑r
+.data:0000000000004050                 align 20h
+.data:0000000000004060                 public ciphertext
+.data:0000000000004060 ciphertext      db 0B8h                 ; DATA XREF: main+135↑o
+.data:0000000000004061                 db  67h ; g
+.data:0000000000004062                 db  0Dh
+.data:0000000000004063                 db  70h ; p
+.data:0000000000004064                 db 0FBh
+.data:0000000000004065                 db 0BEh
+.data:0000000000004066                 db 0E0h
+.data:0000000000004067                 db 0FFh
+.data:0000000000004068                 db  4Ah ; J
+.data:0000000000004069                 db  6Fh ; o
+.data:000000000000406A                 db 0D4h
+.data:000000000000406B                 db  25h ; %
+.data:000000000000406C                 db  62h ; b
+.data:000000000000406D                 db  69h ; i
+.data:000000000000406E                 db  0Bh
+.data:000000000000406F                 db 0CEh
+.data:0000000000004070                 db  53h ; S
+.data:0000000000004071                 db 0B2h
+.data:0000000000004072                 db  80h
+.data:0000000000004073                 db  4Eh ; N
+.data:0000000000004074                 db 0E5h
+.data:0000000000004075                 db 0DCh
+.data:0000000000004076                 db  8Bh
+.data:0000000000004077                 db  83h
+.data:0000000000004078                 db 0E1h
+.data:0000000000004079                 db  4Ah ; J
+.data:000000000000407A                 db 0EEh
+.data:000000000000407B                 db  82h
+.data:000000000000407C                 db  3Ah ; :
+.data:000000000000407D                 db 0DAh
+.data:000000000000407E                 db  6Ah ; j
+.data:000000000000407F                 db  70h ; p
+#+end_src
+
+* AES :cipher:aes:
+Работает раундами шифруя блоки
+Размер блока AES = 128 бит = 16 байт (всегда, независимо от длины ключа)
+Длина ключа: 128/192/256 бит
+
+cbc
+iv - initial vecor
+блоки текста по 16байт
+block1 xor iv = c1
+block2 xor c1 = c2
+...
+blockN(padding до 16) xor cN-1 = cn
+
+
+#+begin_src python :results output
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import unpad
+
+real_key_masked = b'Eg\x01#\xcd\xef\x89\xabFb\x17q3\xcc\xfe\x98'
+
+iv = b'\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f'
+
+
+ciphertext = (
+    b'\xb8g\rp\xfb\xbe\xe0\xffJo\xd4%bi\x0b\xceS\xb2\x80N\xe5\xdc\x8b\x83\xe1J\xee\x82:\xdajp'
+)
+
+aes_key = bytes(b ^ 0x55 for b in real_key_masked)
+
+cipher = AES.new(aes_key, AES.MODE_CBC, iv)
+
+plaintext = cipher.decrypt(ciphertext)
+
+enc_key = b"'f#f'&f\na0&\n6!3t"
+de_enc_key = bytes(b ^ 0x55 for b in enc_key)
+
+print(unpad(plaintext, 16).decode(), de_enc_key.decode(), iv.hex())
+#+end_src
+
+#+RESULTS:
+: cyberED{s0m3_strings} r3v3rs3_4es_ctf! 000102030405060708090a0b0c0d0e0f
