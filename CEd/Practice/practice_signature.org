@@ -1,0 +1,41 @@
+#+title: Practice Signature
+
+
+
+#+begin_src shell :dir . :results output
+ls signature/
+#+end_src
+
+#+RESULTS:
+#+begin_example
+assets
+libjpeg-9.dll
+libpng16-16.dll
+libtiff-5.dll
+libwebp-7.dll
+Magic8Ball.exe
+SDL2_image.dll
+SDL2_ttf.dll
+SDL2.dll
+zlib1.dll
+#+end_example
+
+0x004028cb
+
+
+#+begin_src shell :dir . :results output
+babel-shell llvm-objdump -t signature/Magic8Ball.exe
+#+end_src
+
+#+RESULTS:
+:
+: signature/Magic8Ball.exe:	file format coff-i386
+:
+: SYMBOL TABLE:
+
+#+begin_src shell :dir . :results output
+babel-shell llvm-nm signature/Magic8Ball.exe
+#+end_src
+
+#+RESULTS:
+: signature/Magic8Ball.exe: no symbols

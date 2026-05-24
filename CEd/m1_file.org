@@ -240,3 +240,86 @@ IAT (Import Address Table), не стоит путать с таблицей и�
 - Найти строки
 - Гуглить найденные строки
 - ???
+
+** Анализ по системным и библиотечным вызовам :reverse:libs:
+#+begin_src C
+#include "stdio.h"
+
+int main(int argc, char** argv)
+{
+        printf("Hello world");
+        return 0;
+}
+#+end_src
+
+#+RESULTS:
+: Hello world
+
+*** ELF
+Читаем ELF Header и смотрим PT_INTERP где будет указан dynamic loader
+readelf -l *target*
+
+Общая схема
+В память грузится libc и становится первым userspace кодом
+ kernel
+  - maps exec
+  - maps ld-linux
+  - jumps to ld-linux
+  (kernel читает header, маппит экзек и ld в память, передает управление ld)
+  dynamic linker
+  - read DT_NEEDED
+  - load .so
+  - resolve
+
+*** Macho
+Общая схема
+kernel
+читает header, маппит экзек ищет LC_LOAD_DYLINKER (~ PT_INTERP) маппит dyld (~ ld)
+DT_NEEDED ~ LC_LOAD_DYLIB
+
+
+#+begin_src bash
+ascher@ Practice % otool -L hello_world
+hello_world:
+        /usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1356.0.0)
+#+end_src
+
+#+begin_src bash
+ascher@ Practice % dyld_info hello_world
+hello_world [arm64]:
+    -platform:
+        platform     minOS      sdk
+           macOS     26.0      26.2
+    -uuid:
+        9A3E6970-CB5C-36BB-BC4B-1F78A7FB615F
+    -segments:
+        load-offset   segment  section       sect-size  seg-size   init/max-prot
+        0x00000000    __TEXT                                16KB    r.x/r.x
+        0x100000460             __text               60
+        0x10000049C             __stubs              12
+        0x1000004A8             __cstring            12
+        0x1000004B4             __unwind_info        88
+        0x00004000    __DATA_CONST                          16KB    rw./rw.
+        0x100004000             __got                 8
+    -linked_dylibs:
+        attributes     load path
+                       /usr/lib/libSystem.B.dylib
+#+end_src
+
+#+begin_src bash
+ascher@ Practice % objdump -T hello_world
+
+hello_world:     file format mach-o-arm64
+
+DYNAMIC SYMBOL TABLE:
+0000000100000000 g       0f SECT   01 0010 [.text] __mh_execute_header
+0000000100000460 g       0f SECT   01 0000 [.text] _main
+0000000000000000 g       01 UND    00 0100 _printf
+
+#+end_srcДля elf на macos
+
+#+begin_src c
+ascher@ Practice % greadelf -d practice_strings | grep NEEDED
+ 0x0000000000000001 (NEEDED)             Shared library: [libcrypto.so.1.1]
+ 0x0000000000000001 (NEEDED)             Shared library: [libc.so.6]
+#+end_src
