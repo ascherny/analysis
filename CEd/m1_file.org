@@ -259,6 +259,12 @@ int main(int argc, char** argv)
 Читаем ELF Header и смотрим PT_INTERP где будет указан dynamic loader
 readelf -l *target*
 
+#+begin_src shell :dir . :result output
+babel-shell readelf -l Practice/hello_world
+#+end_src
+
+#+RESULTS:
+
 Общая схема
 В память грузится libc и становится первым userspace кодом
  kernel

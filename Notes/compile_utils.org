@@ -1,0 +1,1783 @@
+#+title: Compile Utils
+
+* Llvm + utils :llvm:
+** llvm cheatsheet :llvm:
+*** Out
+-o <file>	Выходной файл
+-S	Только ассемблер (.s)
+    -emit-llvm	генерация промежуточного llvm IR
+-c	Только объектный файл (.o) без линковки
+-E	Только препроцессинг (вывод на stdout)
+-###	Показать команды линковки (не выполняя)
+-v	Подробный вывод (версия, пути, вызовы)
+-### -v	Максимально подробно
+*** Оптимизации
+-O0	Нет оптимизации (по умолчанию)
+-O1	Базовая оптимизация
+-O2	Агрессивная оптимизация (обычный выбор)
+-O3	Максимальная оптимизация (может увеличить бинарник)
+-Os	Оптимизация по размеру
+-Oz	Ещё сильнее по размеру (для мобильных)
+-Ofast	-O3 + быстрые мат. операции (опасно)
+-flto	Link-Time Optimization
+-ffast-math	Небезопасные оптимизации математики
+
+*** Стандарты
+-std=c99	C99 стандарт
+-std=c11	C11
+-std=c17	C17
+-std=c++11	C++11
+-std=c++14	C++14
+-std=c++17	C++17
+-std=c++20	C++20
+-std=gnu99	C99 с расширениями GNU
+-pedantic	Строгое следование стандарту
+-pedantic-errors	Как выше, но ошибки вместо варнингов
+
+*** IR
+%x	Локальная переменная (виртуальный регистр)
+@x	Глобальная переменная
+alloca	Выделить память на стеке
+load	Прочитать из памяти
+store	Записать в память
+br	Безусловный/условный переход
+icmp	Сравнение целых чисел
+** llvm sandbox :compile:llvm:
+Базовая схема:
+    C source
+    ↓
+    Clang Frontend
+    ↓
+    LLVM IR
+    ↓
+    LLVM x86-64 Backend
+    ↓
+    ELF relocatable object (.o)
+*** Тесты препроцессора
+test.c
+#+begin_src c
+#define HELLO "World"
+#define ADD(a,b) ((a)+(b))
+
+int main() {
+    return ADD(2, 3);
+}
+#+end_src
+
+- Препроцессор
+#+begin_src shell :result output
+clang -E ../CEd/Practice/test.c
+#+end_src
+
+#+RESULTS:
+| #      |          1 | ../CEd/Practice/test.c |        |   |
+| #      |          1 | <built-in>             |      1 |   |
+| #      |          1 | <built-in>             |      3 |   |
+| #      |        482 | <built-in>             |      3 |   |
+| #      |          1 | "<command              | line>" | 1 |
+| #      |          1 | <built-in>             |      2 |   |
+| #      |          1 | ../CEd/Practice/test.c |      2 |   |
+|        |            |                        |        |   |
+|        |            |                        |        |   |
+|        |            |                        |        |   |
+| int    |     main() | {                      |        |   |
+| return | ((2)+(3)); |                        |        |   |
+| }      |            |                        |        |   |
+
+#+begin_src shell :results raw
+/opt/homebrew/opt/llvm/bin/clang -E ../CEd/Practice/test.c
+#+end_src
+
+#+RESULTS:
+# 1 "../CEd/Practice/test.c"
+# 1 "<built-in>" 1
+# 1 "<built-in>" 3
+# 472 "<built-in>" 3
+# 1 "<command line>" 1
+# 1 "<built-in>" 2
+# 1 "../CEd/Practice/test.c" 2
+
+- test.c update
+#+begin_src c
+#define HELLO "World"
+#define ADD(a,b) ((a)+(b))
+
+int main() {
+    return ADD(2, 3);
+}
+
+#+end_src
+
+- Вывод подключенных макросов
+#+begin_src shell :results output drawer
+/opt/homebrew/opt/llvm/bin/clang -E -dM ../CEd/Practice/test.c
+#+end_src
+
+#+RESULTS:
+:results:
+#define ADD(a,b) ((a)+(b))
+#define HELLO "World"
+#define TARGET_IPHONE_SIMULATOR 0
+#define TARGET_OS_DRIVERKIT 0
+#define TARGET_OS_EMBEDDED 0
+#define TARGET_OS_IOS 0
+#define TARGET_OS_IPHONE 0
+#define TARGET_OS_LINUX 0
+#define TARGET_OS_MAC 1
+#define TARGET_OS_MACCATALYST 0
+#define TARGET_OS_NANO 0
+#define TARGET_OS_OSX 1
+#define TARGET_OS_SIMULATOR 0
+#define TARGET_OS_TV 0
+#define TARGET_OS_UEFI 0
+#define TARGET_OS_UIKITFORMAC 0
+#define TARGET_OS_UNIX 0
+#define TARGET_OS_VISION 0
+#define TARGET_OS_WATCH 0
+#define TARGET_OS_WIN32 0
+#define TARGET_OS_WINDOWS 0
+#define _LP64 1
+#define __AARCH64EL__ 1
+#define __AARCH64_CMODEL_SMALL__ 1
+#define __AARCH64_SIMD__ 1
+#define __APPLE_CC__ 6000
+#define __APPLE__ 1
+#define __ARM64_ARCH_8__ 1
+#define __ARM_64BIT_STATE 1
+#define __ARM_ACLE 202420
+#define __ARM_ACLE_VERSION(year,quarter,patch) (100 * (year) + 10 * (quarter) + (patch))
+#define __ARM_ALIGN_MAX_STACK_PWR 4
+#define __ARM_ARCH 8
+#define __ARM_ARCH_ISA_A64 1
+#define __ARM_ARCH_PROFILE 'A'
+#define __ARM_FEATURE_AES 1
+#define __ARM_FEATURE_ATOMICS 1
+#define __ARM_FEATURE_CLZ 1
+#define __ARM_FEATURE_COMPLEX 1
+#define __ARM_FEATURE_CRC32 1
+#define __ARM_FEATURE_CRYPTO 1
+#define __ARM_FEATURE_DIRECTED_ROUNDING 1
+#define __ARM_FEATURE_DIV 1
+#define __ARM_FEATURE_DOTPROD 1
+#define __ARM_FEATURE_FMA 1
+#define __ARM_FEATURE_FP16_FML 1
+#define __ARM_FEATURE_FP16_SCALAR_ARITHMETIC 1
+#define __ARM_FEATURE_FP16_VECTOR_ARITHMETIC 1
+#define __ARM_FEATURE_IDIV 1
+#define __ARM_FEATURE_JCVT 1
+#define __ARM_FEATURE_LDREX 0xF
+#define __ARM_FEATURE_NUMERIC_MAXMIN 1
+#define __ARM_FEATURE_PAUTH 1
+#define __ARM_FEATURE_QRDMX 1
+#define __ARM_FEATURE_RCPC 1
+#define __ARM_FEATURE_SHA2 1
+#define __ARM_FEATURE_SHA3 1
+#define __ARM_FEATURE_SHA512 1
+#define __ARM_FEATURE_UNALIGNED 1
+#define __ARM_FP 0xE
+#define __ARM_FP16_ARGS 1
+#define __ARM_FP16_FORMAT_IEEE 1
+#define __ARM_NEON 1
+#define __ARM_NEON_FP 0xE
+#define __ARM_NEON_SVE_BRIDGE 1
+#define __ARM_NEON__ 1
+#define __ARM_PCS_AAPCS64 1
+#define __ARM_PREFETCH_RANGE 1
+#define __ARM_SIZEOF_MINIMAL_ENUM 4
+#define __ARM_SIZEOF_WCHAR_T 4
+#define __ARM_STATE_ZA 1
+#define __ARM_STATE_ZT0 1
+#define __ATOMIC_ACQUIRE 2
+#define __ATOMIC_ACQ_REL 4
+#define __ATOMIC_CONSUME 1
+#define __ATOMIC_RELAXED 0
+#define __ATOMIC_RELEASE 3
+#define __ATOMIC_SEQ_CST 5
+#define __BIGGEST_ALIGNMENT__ 8
+#define __BITINT_MAXWIDTH__ 128
+#define __BLOCKS__ 1
+#define __BOOL_WIDTH__ 1
+#define __BYTE_ORDER__ __ORDER_LITTLE_ENDIAN__
+#define __CHAR16_TYPE__ unsigned short
+#define __CHAR32_TYPE__ unsigned int
+#define __CHAR_BIT__ 8
+#define __CLANG_ATOMIC_BOOL_LOCK_FREE 2
+#define __CLANG_ATOMIC_CHAR16_T_LOCK_FREE 2
+#define __CLANG_ATOMIC_CHAR32_T_LOCK_FREE 2
+#define __CLANG_ATOMIC_CHAR_LOCK_FREE 2
+#define __CLANG_ATOMIC_INT_LOCK_FREE 2
+#define __CLANG_ATOMIC_LLONG_LOCK_FREE 2
+#define __CLANG_ATOMIC_LONG_LOCK_FREE 2
+#define __CLANG_ATOMIC_POINTER_LOCK_FREE 2
+#define __CLANG_ATOMIC_SHORT_LOCK_FREE 2
+#define __CLANG_ATOMIC_WCHAR_T_LOCK_FREE 2
+#define __CONSTANT_CFSTRINGS__ 1
+#define __DBL_DECIMAL_DIG__ 17
+#define __DBL_DENORM_MIN__ 4.9406564584124654e-324
+#define __DBL_DIG__ 15
+#define __DBL_EPSILON__ 2.2204460492503131e-16
+#define __DBL_HAS_DENORM__ 1
+#define __DBL_HAS_INFINITY__ 1
+#define __DBL_HAS_QUIET_NAN__ 1
+#define __DBL_MANT_DIG__ 53
+#define __DBL_MAX_10_EXP__ 308
+#define __DBL_MAX_EXP__ 1024
+#define __DBL_MAX__ 1.7976931348623157e+308
+#define __DBL_MIN_10_EXP__ (-307)
+#define __DBL_MIN_EXP__ (-1021)
+#define __DBL_MIN__ 2.2250738585072014e-308
+#define __DBL_NORM_MAX__ 1.7976931348623157e+308
+#define __DECIMAL_DIG__ __LDBL_DECIMAL_DIG__
+#define __DYNAMIC__ 1
+#define __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ 260000
+#define __ENVIRONMENT_OS_VERSION_MIN_REQUIRED__ 260000
+#define __FINITE_MATH_ONLY__ 0
+#define __FLT16_DECIMAL_DIG__ 5
+#define __FLT16_DENORM_MIN__ 5.9604644775390625e-8F16
+#define __FLT16_DIG__ 3
+#define __FLT16_EPSILON__ 9.765625e-4F16
+#define __FLT16_HAS_DENORM__ 1
+#define __FLT16_HAS_INFINITY__ 1
+#define __FLT16_HAS_QUIET_NAN__ 1
+#define __FLT16_MANT_DIG__ 11
+#define __FLT16_MAX_10_EXP__ 4
+#define __FLT16_MAX_EXP__ 16
+#define __FLT16_MAX__ 6.5504e+4F16
+#define __FLT16_MIN_10_EXP__ (-4)
+#define __FLT16_MIN_EXP__ (-13)
+#define __FLT16_MIN__ 6.103515625e-5F16
+#define __FLT16_NORM_MAX__ 6.5504e+4F16
+#define __FLT_DECIMAL_DIG__ 9
+#define __FLT_DENORM_MIN__ 1.40129846e-45F
+#define __FLT_DIG__ 6
+#define __FLT_EPSILON__ 1.19209290e-7F
+#define __FLT_HAS_DENORM__ 1
+#define __FLT_HAS_INFINITY__ 1
+#define __FLT_HAS_QUIET_NAN__ 1
+#define __FLT_MANT_DIG__ 24
+#define __FLT_MAX_10_EXP__ 38
+#define __FLT_MAX_EXP__ 128
+#define __FLT_MAX__ 3.40282347e+38F
+#define __FLT_MIN_10_EXP__ (-37)
+#define __FLT_MIN_EXP__ (-125)
+#define __FLT_MIN__ 1.17549435e-38F
+#define __FLT_NORM_MAX__ 3.40282347e+38F
+#define __FLT_RADIX__ 2
+#define __FPCLASS_NEGINF 0x0004
+#define __FPCLASS_NEGNORMAL 0x0008
+#define __FPCLASS_NEGSUBNORMAL 0x0010
+#define __FPCLASS_NEGZERO 0x0020
+#define __FPCLASS_POSINF 0x0200
+#define __FPCLASS_POSNORMAL 0x0100
+#define __FPCLASS_POSSUBNORMAL 0x0080
+#define __FPCLASS_POSZERO 0x0040
+#define __FPCLASS_QNAN 0x0002
+#define __FPCLASS_SNAN 0x0001
+#define __FP_FAST_FMA 1
+#define __FP_FAST_FMAF 1
+#define __FUNCTION_MULTI_VERSIONING_SUPPORT_LEVEL 202430
+#define __GCC_ASM_FLAG_OUTPUTS__ 1
+#define __GCC_ATOMIC_BOOL_LOCK_FREE 2
+#define __GCC_ATOMIC_CHAR16_T_LOCK_FREE 2
+#define __GCC_ATOMIC_CHAR32_T_LOCK_FREE 2
+#define __GCC_ATOMIC_CHAR_LOCK_FREE 2
+#define __GCC_ATOMIC_INT_LOCK_FREE 2
+#define __GCC_ATOMIC_LLONG_LOCK_FREE 2
+#define __GCC_ATOMIC_LONG_LOCK_FREE 2
+#define __GCC_ATOMIC_POINTER_LOCK_FREE 2
+#define __GCC_ATOMIC_SHORT_LOCK_FREE 2
+#define __GCC_ATOMIC_TEST_AND_SET_TRUEVAL 1
+#define __GCC_ATOMIC_WCHAR_T_LOCK_FREE 2
+#define __GCC_CONSTRUCTIVE_SIZE 64
+#define __GCC_DESTRUCTIVE_SIZE 256
+#define __GCC_HAVE_DWARF2_CFI_ASM 1
+#define __GCC_HAVE_SYNC_COMPARE_AND_SWAP_1 1
+#define __GCC_HAVE_SYNC_COMPARE_AND_SWAP_16 1
+#define __GCC_HAVE_SYNC_COMPARE_AND_SWAP_2 1
+#define __GCC_HAVE_SYNC_COMPARE_AND_SWAP_4 1
+#define __GCC_HAVE_SYNC_COMPARE_AND_SWAP_8 1
+#define __GNUC_MINOR__ 2
+#define __GNUC_PATCHLEVEL__ 1
+#define __GNUC_STDC_INLINE__ 1
+#define __GNUC__ 4
+#define __GXX_ABI_VERSION 1002
+#define __HAVE_FUNCTION_MULTI_VERSIONING 1
+#define __INT16_C(c) c
+#define __INT16_C_SUFFIX__
+#define __INT16_FMTd__ "hd"
+#define __INT16_FMTi__ "hi"
+#define __INT16_MAX__ 32767
+#define __INT16_TYPE__ short
+#define __INT32_C(c) c
+#define __INT32_C_SUFFIX__
+#define __INT32_FMTd__ "d"
+#define __INT32_FMTi__ "i"
+#define __INT32_MAX__ 2147483647
+#define __INT32_TYPE__ int
+#define __INT64_C(c) c##LL
+#define __INT64_C_SUFFIX__ LL
+#define __INT64_FMTd__ "lld"
+#define __INT64_FMTi__ "lli"
+#define __INT64_MAX__ 9223372036854775807LL
+#define __INT64_TYPE__ long long int
+#define __INT8_C(c) c
+#define __INT8_C_SUFFIX__
+#define __INT8_FMTd__ "hhd"
+#define __INT8_FMTi__ "hhi"
+#define __INT8_MAX__ 127
+#define __INT8_TYPE__ signed char
+#define __INTMAX_C(c) c##L
+#define __INTMAX_C_SUFFIX__ L
+#define __INTMAX_FMTd__ "ld"
+#define __INTMAX_FMTi__ "li"
+#define __INTMAX_MAX__ 9223372036854775807L
+#define __INTMAX_TYPE__ long int
+#define __INTMAX_WIDTH__ 64
+#define __INTPTR_FMTd__ "ld"
+#define __INTPTR_FMTi__ "li"
+#define __INTPTR_MAX__ 9223372036854775807L
+#define __INTPTR_TYPE__ long int
+#define __INTPTR_WIDTH__ 64
+#define __INT_FAST16_FMTd__ "hd"
+#define __INT_FAST16_FMTi__ "hi"
+#define __INT_FAST16_MAX__ 32767
+#define __INT_FAST16_TYPE__ short
+#define __INT_FAST16_WIDTH__ 16
+#define __INT_FAST32_FMTd__ "d"
+#define __INT_FAST32_FMTi__ "i"
+#define __INT_FAST32_MAX__ 2147483647
+#define __INT_FAST32_TYPE__ int
+#define __INT_FAST32_WIDTH__ 32
+#define __INT_FAST64_FMTd__ "lld"
+#define __INT_FAST64_FMTi__ "lli"
+#define __INT_FAST64_MAX__ 9223372036854775807LL
+#define __INT_FAST64_TYPE__ long long int
+#define __INT_FAST64_WIDTH__ 64
+#define __INT_FAST8_FMTd__ "hhd"
+#define __INT_FAST8_FMTi__ "hhi"
+#define __INT_FAST8_MAX__ 127
+#define __INT_FAST8_TYPE__ signed char
+#define __INT_FAST8_WIDTH__ 8
+#define __INT_LEAST16_FMTd__ "hd"
+#define __INT_LEAST16_FMTi__ "hi"
+#define __INT_LEAST16_MAX__ 32767
+#define __INT_LEAST16_TYPE__ short
+#define __INT_LEAST16_WIDTH__ 16
+#define __INT_LEAST32_FMTd__ "d"
+#define __INT_LEAST32_FMTi__ "i"
+#define __INT_LEAST32_MAX__ 2147483647
+#define __INT_LEAST32_TYPE__ int
+#define __INT_LEAST32_WIDTH__ 32
+#define __INT_LEAST64_FMTd__ "lld"
+#define __INT_LEAST64_FMTi__ "lli"
+#define __INT_LEAST64_MAX__ 9223372036854775807LL
+#define __INT_LEAST64_TYPE__ long long int
+#define __INT_LEAST64_WIDTH__ 64
+#define __INT_LEAST8_FMTd__ "hhd"
+#define __INT_LEAST8_FMTi__ "hhi"
+#define __INT_LEAST8_MAX__ 127
+#define __INT_LEAST8_TYPE__ signed char
+#define __INT_LEAST8_WIDTH__ 8
+#define __INT_MAX__ 2147483647
+#define __INT_WIDTH__ 32
+#define __LDBL_DECIMAL_DIG__ 17
+#define __LDBL_DENORM_MIN__ 4.9406564584124654e-324L
+#define __LDBL_DIG__ 15
+#define __LDBL_EPSILON__ 2.2204460492503131e-16L
+#define __LDBL_HAS_DENORM__ 1
+#define __LDBL_HAS_INFINITY__ 1
+#define __LDBL_HAS_QUIET_NAN__ 1
+#define __LDBL_MANT_DIG__ 53
+#define __LDBL_MAX_10_EXP__ 308
+#define __LDBL_MAX_EXP__ 1024
+#define __LDBL_MAX__ 1.7976931348623157e+308L
+#define __LDBL_MIN_10_EXP__ (-307)
+#define __LDBL_MIN_EXP__ (-1021)
+#define __LDBL_MIN__ 2.2250738585072014e-308L
+#define __LDBL_NORM_MAX__ 1.7976931348623157e+308L
+#define __LITTLE_ENDIAN__ 1
+#define __LLONG_WIDTH__ 64
+#define __LONG_LONG_MAX__ 9223372036854775807LL
+#define __LONG_MAX__ 9223372036854775807L
+#define __LONG_WIDTH__ 64
+#define __LP64__ 1
+#define __MACH__ 1
+#define __MEMORY_SCOPE_CLUSTR 5
+#define __MEMORY_SCOPE_DEVICE 1
+#define __MEMORY_SCOPE_SINGLE 4
+#define __MEMORY_SCOPE_SYSTEM 0
+#define __MEMORY_SCOPE_WRKGRP 2
+#define __MEMORY_SCOPE_WVFRNT 3
+#define __NO_INLINE__ 1
+#define __NO_MATH_ERRNO__ 1
+#define __OBJC_BOOL_IS_BOOL 1
+#define __OPENCL_MEMORY_SCOPE_ALL_SVM_DEVICES 3
+#define __OPENCL_MEMORY_SCOPE_DEVICE 2
+#define __OPENCL_MEMORY_SCOPE_SUB_GROUP 4
+#define __OPENCL_MEMORY_SCOPE_WORK_GROUP 1
+#define __OPENCL_MEMORY_SCOPE_WORK_ITEM 0
+#define __ORDER_BIG_ENDIAN__ 4321
+#define __ORDER_LITTLE_ENDIAN__ 1234
+#define __ORDER_PDP_ENDIAN__ 3412
+#define __PIC__ 2
+#define __POINTER_WIDTH__ 64
+#define __PRAGMA_REDEFINE_EXTNAME 1
+#define __PTRDIFF_FMTd__ "ld"
+#define __PTRDIFF_FMTi__ "li"
+#define __PTRDIFF_MAX__ 9223372036854775807L
+#define __PTRDIFF_TYPE__ long int
+#define __PTRDIFF_WIDTH__ 64
+#define __REGISTER_PREFIX__
+#define __SCHAR_MAX__ 127
+#define __SHRT_MAX__ 32767
+#define __SHRT_WIDTH__ 16
+#define __SIG_ATOMIC_MAX__ 2147483647
+#define __SIG_ATOMIC_WIDTH__ 32
+#define __SIZEOF_DOUBLE__ 8
+#define __SIZEOF_FLOAT__ 4
+#define __SIZEOF_INT128__ 16
+#define __SIZEOF_INT__ 4
+#define __SIZEOF_LONG_DOUBLE__ 8
+#define __SIZEOF_LONG_LONG__ 8
+#define __SIZEOF_LONG__ 8
+#define __SIZEOF_POINTER__ 8
+#define __SIZEOF_PTRDIFF_T__ 8
+#define __SIZEOF_SHORT__ 2
+#define __SIZEOF_SIZE_T__ 8
+#define __SIZEOF_WCHAR_T__ 4
+#define __SIZEOF_WINT_T__ 4
+#define __SIZE_FMTX__ "lX"
+#define __SIZE_FMTo__ "lo"
+#define __SIZE_FMTu__ "lu"
+#define __SIZE_FMTx__ "lx"
+#define __SIZE_MAX__ 18446744073709551615UL
+#define __SIZE_TYPE__ long unsigned int
+#define __SIZE_WIDTH__ 64
+#define __SSP__ 1
+#define __STDC_EMBED_EMPTY__ 2
+#define __STDC_EMBED_FOUND__ 1
+#define __STDC_EMBED_NOT_FOUND__ 0
+#define __STDC_HOSTED__ 1
+#define __STDC_NO_THREADS__ 1
+#define __STDC_UTF_16__ 1
+#define __STDC_UTF_32__ 1
+#define __STDC_VERSION__ 201710L
+#define __STDC__ 1
+#define __UINT16_C(c) c
+#define __UINT16_C_SUFFIX__
+#define __UINT16_FMTX__ "hX"
+#define __UINT16_FMTo__ "ho"
+#define __UINT16_FMTu__ "hu"
+#define __UINT16_FMTx__ "hx"
+#define __UINT16_MAX__ 65535
+#define __UINT16_TYPE__ unsigned short
+#define __UINT32_C(c) c##U
+#define __UINT32_C_SUFFIX__ U
+#define __UINT32_FMTX__ "X"
+#define __UINT32_FMTo__ "o"
+#define __UINT32_FMTu__ "u"
+#define __UINT32_FMTx__ "x"
+#define __UINT32_MAX__ 4294967295U
+#define __UINT32_TYPE__ unsigned int
+#define __UINT64_C(c) c##ULL
+#define __UINT64_C_SUFFIX__ ULL
+#define __UINT64_FMTX__ "llX"
+#define __UINT64_FMTo__ "llo"
+#define __UINT64_FMTu__ "llu"
+#define __UINT64_FMTx__ "llx"
+#define __UINT64_MAX__ 18446744073709551615ULL
+#define __UINT64_TYPE__ long long unsigned int
+#define __UINT8_C(c) c
+#define __UINT8_C_SUFFIX__
+#define __UINT8_FMTX__ "hhX"
+#define __UINT8_FMTo__ "hho"
+#define __UINT8_FMTu__ "hhu"
+#define __UINT8_FMTx__ "hhx"
+#define __UINT8_MAX__ 255
+#define __UINT8_TYPE__ unsigned char
+#define __UINTMAX_C(c) c##UL
+#define __UINTMAX_C_SUFFIX__ UL
+#define __UINTMAX_FMTX__ "lX"
+#define __UINTMAX_FMTo__ "lo"
+#define __UINTMAX_FMTu__ "lu"
+#define __UINTMAX_FMTx__ "lx"
+#define __UINTMAX_MAX__ 18446744073709551615UL
+#define __UINTMAX_TYPE__ long unsigned int
+#define __UINTMAX_WIDTH__ 64
+#define __UINTPTR_FMTX__ "lX"
+#define __UINTPTR_FMTo__ "lo"
+#define __UINTPTR_FMTu__ "lu"
+#define __UINTPTR_FMTx__ "lx"
+#define __UINTPTR_MAX__ 18446744073709551615UL
+#define __UINTPTR_TYPE__ long unsigned int
+#define __UINTPTR_WIDTH__ 64
+#define __UINT_FAST16_FMTX__ "hX"
+#define __UINT_FAST16_FMTo__ "ho"
+#define __UINT_FAST16_FMTu__ "hu"
+#define __UINT_FAST16_FMTx__ "hx"
+#define __UINT_FAST16_MAX__ 65535
+#define __UINT_FAST16_TYPE__ unsigned short
+#define __UINT_FAST32_FMTX__ "X"
+#define __UINT_FAST32_FMTo__ "o"
+#define __UINT_FAST32_FMTu__ "u"
+#define __UINT_FAST32_FMTx__ "x"
+#define __UINT_FAST32_MAX__ 4294967295U
+#define __UINT_FAST32_TYPE__ unsigned int
+#define __UINT_FAST64_FMTX__ "llX"
+#define __UINT_FAST64_FMTo__ "llo"
+#define __UINT_FAST64_FMTu__ "llu"
+#define __UINT_FAST64_FMTx__ "llx"
+#define __UINT_FAST64_MAX__ 18446744073709551615ULL
+#define __UINT_FAST64_TYPE__ long long unsigned int
+#define __UINT_FAST8_FMTX__ "hhX"
+#define __UINT_FAST8_FMTo__ "hho"
+#define __UINT_FAST8_FMTu__ "hhu"
+#define __UINT_FAST8_FMTx__ "hhx"
+#define __UINT_FAST8_MAX__ 255
+#define __UINT_FAST8_TYPE__ unsigned char
+#define __UINT_LEAST16_FMTX__ "hX"
+#define __UINT_LEAST16_FMTo__ "ho"
+#define __UINT_LEAST16_FMTu__ "hu"
+#define __UINT_LEAST16_FMTx__ "hx"
+#define __UINT_LEAST16_MAX__ 65535
+#define __UINT_LEAST16_TYPE__ unsigned short
+#define __UINT_LEAST32_FMTX__ "X"
+#define __UINT_LEAST32_FMTo__ "o"
+#define __UINT_LEAST32_FMTu__ "u"
+#define __UINT_LEAST32_FMTx__ "x"
+#define __UINT_LEAST32_MAX__ 4294967295U
+#define __UINT_LEAST32_TYPE__ unsigned int
+#define __UINT_LEAST64_FMTX__ "llX"
+#define __UINT_LEAST64_FMTo__ "llo"
+#define __UINT_LEAST64_FMTu__ "llu"
+#define __UINT_LEAST64_FMTx__ "llx"
+#define __UINT_LEAST64_MAX__ 18446744073709551615ULL
+#define __UINT_LEAST64_TYPE__ long long unsigned int
+#define __UINT_LEAST8_FMTX__ "hhX"
+#define __UINT_LEAST8_FMTo__ "hho"
+#define __UINT_LEAST8_FMTu__ "hhu"
+#define __UINT_LEAST8_FMTx__ "hhx"
+#define __UINT_LEAST8_MAX__ 255
+#define __UINT_LEAST8_TYPE__ unsigned char
+#define __USER_LABEL_PREFIX__ _
+#define __VERSION__ "Homebrew Clang 22.1.6"
+#define __WCHAR_MAX__ 2147483647
+#define __WCHAR_TYPE__ int
+#define __WCHAR_WIDTH__ 32
+#define __WINT_MAX__ 2147483647
+#define __WINT_TYPE__ int
+#define __WINT_WIDTH__ 32
+#define __aarch64__ 1
+#define __arm64 1
+#define __arm64__ 1
+#define __block __attribute__((__blocks__(byref)))
+#define __clang__ 1
+#define __clang_literal_encoding__ "UTF-8"
+#define __clang_major__ 22
+#define __clang_minor__ 1
+#define __clang_patchlevel__ 6
+#define __clang_version__ "22.1.6 "
+#define __clang_wide_literal_encoding__ "UTF-32"
+#define __llvm__ 1
+#define __nonnull _Nonnull
+#define __null_unspecified _Null_unspecified
+#define __nullable _Nullable
+#define __pic__ 2
+#define __strong
+#define __unsafe_unretained
+#define __weak __attribute__((objc_gc(weak)))
+:end:
+
+#+begin_src shell :results output drawer
+clang -E -dM ../CEd/Practice/test.c
+#+end_src
+
+#+RESULTS:
+:results:
+#define ADD(a,b) ((a)+(b))
+#define HELLO "World"
+#define TARGET_IPHONE_SIMULATOR 0
+#define TARGET_OS_ARROW 1
+#define TARGET_OS_BRIDGE 0
+#define TARGET_OS_DRIVERKIT 0
+#define TARGET_OS_EMBEDDED 0
+#define TARGET_OS_IOS 0
+#define TARGET_OS_IOSMAC 0
+#define TARGET_OS_IPHONE 0
+#define TARGET_OS_LINUX 0
+#define TARGET_OS_MAC 1
+#define TARGET_OS_MACCATALYST 0
+#define TARGET_OS_NANO 0
+#define TARGET_OS_OSX 1
+#define TARGET_OS_SIMULATOR 0
+#define TARGET_OS_TV 0
+#define TARGET_OS_UEFI 0
+#define TARGET_OS_UIKITFORMAC 0
+#define TARGET_OS_UNIX 0
+#define TARGET_OS_VISION 0
+#define TARGET_OS_WATCH 0
+#define TARGET_OS_WIN32 0
+#define TARGET_OS_WINDOWS 0
+#define TARGET_OS_XR 0
+#define _HAS_BUILTIN_AVAILABLE_FEATS 1
+#define _LP64 1
+#define __AARCH64EL__ 1
+#define __AARCH64_CMODEL_SMALL__ 1
+#define __AARCH64_SIMD__ 1
+#define __APPLE_CC__ 6000
+#define __APPLE__ 1
+#define __ARM64_ARCH_8__ 1
+#define __ARM_64BIT_STATE 1
+#define __ARM_ACLE 202420
+#define __ARM_ACLE_VERSION(year,quarter,patch) (100 * (year) + 10 * (quarter) + (patch))
+#define __ARM_ALIGN_MAX_STACK_PWR 4
+#define __ARM_ARCH 8
+#define __ARM_ARCH_8_2__ 1
+#define __ARM_ARCH_8_3__ 1
+#define __ARM_ARCH_8_4__ 1
+#define __ARM_ARCH_8_5__ 1
+#define __ARM_ARCH_ISA_A64 1
+#define __ARM_ARCH_PROFILE 'A'
+#define __ARM_FEATURE_AES 1
+#define __ARM_FEATURE_ATOMICS 1
+#define __ARM_FEATURE_BTI 1
+#define __ARM_FEATURE_CLZ 1
+#define __ARM_FEATURE_COMPLEX 1
+#define __ARM_FEATURE_CRC32 1
+#define __ARM_FEATURE_CRYPTO 1
+#define __ARM_FEATURE_DIRECTED_ROUNDING 1
+#define __ARM_FEATURE_DIV 1
+#define __ARM_FEATURE_DOTPROD 1
+#define __ARM_FEATURE_FMA 1
+#define __ARM_FEATURE_FP16_FML 1
+#define __ARM_FEATURE_FP16_SCALAR_ARITHMETIC 1
+#define __ARM_FEATURE_FP16_VECTOR_ARITHMETIC 1
+#define __ARM_FEATURE_FRINT 1
+#define __ARM_FEATURE_IDIV 1
+#define __ARM_FEATURE_JCVT 1
+#define __ARM_FEATURE_LDREX 0xF
+#define __ARM_FEATURE_NUMERIC_MAXMIN 1
+#define __ARM_FEATURE_PAUTH 1
+#define __ARM_FEATURE_QRDMX 1
+#define __ARM_FEATURE_RCPC 1
+#define __ARM_FEATURE_SHA2 1
+#define __ARM_FEATURE_SHA3 1
+#define __ARM_FEATURE_SHA512 1
+#define __ARM_FEATURE_UNALIGNED 1
+#define __ARM_FP 0xE
+#define __ARM_FP16_ARGS 1
+#define __ARM_FP16_FORMAT_IEEE 1
+#define __ARM_NEON 1
+#define __ARM_NEON_FP 0xE
+#define __ARM_NEON_SVE_BRIDGE 1
+#define __ARM_NEON__ 1
+#define __ARM_PCS_AAPCS64 1
+#define __ARM_SIZEOF_MINIMAL_ENUM 4
+#define __ARM_SIZEOF_WCHAR_T 4
+#define __ARM_STATE_ZA 1
+#define __ARM_STATE_ZT0 1
+#define __ATOMIC_ACQUIRE 2
+#define __ATOMIC_ACQ_REL 4
+#define __ATOMIC_CONSUME 1
+#define __ATOMIC_RELAXED 0
+#define __ATOMIC_RELEASE 3
+#define __ATOMIC_SEQ_CST 5
+#define __BIGGEST_ALIGNMENT__ 8
+#define __BITINT_MAXWIDTH__ 128
+#define __BLOCKS__ 1
+#define __BOOL_WIDTH__ 1
+#define __BYTE_ORDER__ __ORDER_LITTLE_ENDIAN__
+#define __CHAR16_TYPE__ unsigned short
+#define __CHAR32_TYPE__ unsigned int
+#define __CHAR_BIT__ 8
+#define __CLANG_ATOMIC_BOOL_LOCK_FREE 2
+#define __CLANG_ATOMIC_CHAR16_T_LOCK_FREE 2
+#define __CLANG_ATOMIC_CHAR32_T_LOCK_FREE 2
+#define __CLANG_ATOMIC_CHAR_LOCK_FREE 2
+#define __CLANG_ATOMIC_INT_LOCK_FREE 2
+#define __CLANG_ATOMIC_LLONG_LOCK_FREE 2
+#define __CLANG_ATOMIC_LONG_LOCK_FREE 2
+#define __CLANG_ATOMIC_POINTER_LOCK_FREE 2
+#define __CLANG_ATOMIC_SHORT_LOCK_FREE 2
+#define __CLANG_ATOMIC_WCHAR_T_LOCK_FREE 2
+#define __CONSTANT_CFSTRINGS__ 1
+#define __DBL_DECIMAL_DIG__ 17
+#define __DBL_DENORM_MIN__ 4.9406564584124654e-324
+#define __DBL_DIG__ 15
+#define __DBL_EPSILON__ 2.2204460492503131e-16
+#define __DBL_HAS_DENORM__ 1
+#define __DBL_HAS_INFINITY__ 1
+#define __DBL_HAS_QUIET_NAN__ 1
+#define __DBL_MANT_DIG__ 53
+#define __DBL_MAX_10_EXP__ 308
+#define __DBL_MAX_EXP__ 1024
+#define __DBL_MAX__ 1.7976931348623157e+308
+#define __DBL_MIN_10_EXP__ (-307)
+#define __DBL_MIN_EXP__ (-1021)
+#define __DBL_MIN__ 2.2250738585072014e-308
+#define __DBL_NORM_MAX__ 1.7976931348623157e+308
+#define __DECIMAL_DIG__ __LDBL_DECIMAL_DIG__
+#define __DYNAMIC__ 1
+#define __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ 260000
+#define __ENVIRONMENT_OS_VERSION_MIN_REQUIRED__ 260000
+#define __FINITE_MATH_ONLY__ 0
+#define __FLT16_DECIMAL_DIG__ 5
+#define __FLT16_DENORM_MIN__ 5.9604644775390625e-8F16
+#define __FLT16_DIG__ 3
+#define __FLT16_EPSILON__ 9.765625e-4F16
+#define __FLT16_HAS_DENORM__ 1
+#define __FLT16_HAS_INFINITY__ 1
+#define __FLT16_HAS_QUIET_NAN__ 1
+#define __FLT16_MANT_DIG__ 11
+#define __FLT16_MAX_10_EXP__ 4
+#define __FLT16_MAX_EXP__ 16
+#define __FLT16_MAX__ 6.5504e+4F16
+#define __FLT16_MIN_10_EXP__ (-4)
+#define __FLT16_MIN_EXP__ (-13)
+#define __FLT16_MIN__ 6.103515625e-5F16
+#define __FLT16_NORM_MAX__ 6.5504e+4F16
+#define __FLT_DECIMAL_DIG__ 9
+#define __FLT_DENORM_MIN__ 1.40129846e-45F
+#define __FLT_DIG__ 6
+#define __FLT_EPSILON__ 1.19209290e-7F
+#define __FLT_HAS_DENORM__ 1
+#define __FLT_HAS_INFINITY__ 1
+#define __FLT_HAS_QUIET_NAN__ 1
+#define __FLT_MANT_DIG__ 24
+#define __FLT_MAX_10_EXP__ 38
+#define __FLT_MAX_EXP__ 128
+#define __FLT_MAX__ 3.40282347e+38F
+#define __FLT_MIN_10_EXP__ (-37)
+#define __FLT_MIN_EXP__ (-125)
+#define __FLT_MIN__ 1.17549435e-38F
+#define __FLT_NORM_MAX__ 3.40282347e+38F
+#define __FLT_RADIX__ 2
+#define __FPCLASS_NEGINF 0x0004
+#define __FPCLASS_NEGNORMAL 0x0008
+#define __FPCLASS_NEGSUBNORMAL 0x0010
+#define __FPCLASS_NEGZERO 0x0020
+#define __FPCLASS_POSINF 0x0200
+#define __FPCLASS_POSNORMAL 0x0100
+#define __FPCLASS_POSSUBNORMAL 0x0080
+#define __FPCLASS_POSZERO 0x0040
+#define __FPCLASS_QNAN 0x0002
+#define __FPCLASS_SNAN 0x0001
+#define __FP_FAST_FMA 1
+#define __FP_FAST_FMAF 1
+#define __FUNCTION_MULTI_VERSIONING_SUPPORT_LEVEL 202430
+#define __GCC_ASM_FLAG_OUTPUTS__ 1
+#define __GCC_ATOMIC_BOOL_LOCK_FREE 2
+#define __GCC_ATOMIC_CHAR16_T_LOCK_FREE 2
+#define __GCC_ATOMIC_CHAR32_T_LOCK_FREE 2
+#define __GCC_ATOMIC_CHAR_LOCK_FREE 2
+#define __GCC_ATOMIC_INT_LOCK_FREE 2
+#define __GCC_ATOMIC_LLONG_LOCK_FREE 2
+#define __GCC_ATOMIC_LONG_LOCK_FREE 2
+#define __GCC_ATOMIC_POINTER_LOCK_FREE 2
+#define __GCC_ATOMIC_SHORT_LOCK_FREE 2
+#define __GCC_ATOMIC_TEST_AND_SET_TRUEVAL 1
+#define __GCC_ATOMIC_WCHAR_T_LOCK_FREE 2
+#define __GCC_CONSTRUCTIVE_SIZE 64
+#define __GCC_DESTRUCTIVE_SIZE 256
+#define __GCC_HAVE_DWARF2_CFI_ASM 1
+#define __GCC_HAVE_SYNC_COMPARE_AND_SWAP_1 1
+#define __GCC_HAVE_SYNC_COMPARE_AND_SWAP_16 1
+#define __GCC_HAVE_SYNC_COMPARE_AND_SWAP_2 1
+#define __GCC_HAVE_SYNC_COMPARE_AND_SWAP_4 1
+#define __GCC_HAVE_SYNC_COMPARE_AND_SWAP_8 1
+#define __GNUC_MINOR__ 2
+#define __GNUC_PATCHLEVEL__ 1
+#define __GNUC_STDC_INLINE__ 1
+#define __GNUC__ 4
+#define __GXX_ABI_VERSION 1002
+#define __HAVE_FUNCTION_MULTI_VERSIONING 1
+#define __INT16_C(c) c
+#define __INT16_C_SUFFIX__
+#define __INT16_FMTd__ "hd"
+#define __INT16_FMTi__ "hi"
+#define __INT16_MAX__ 32767
+#define __INT16_TYPE__ short
+#define __INT32_C(c) c
+#define __INT32_C_SUFFIX__
+#define __INT32_FMTd__ "d"
+#define __INT32_FMTi__ "i"
+#define __INT32_MAX__ 2147483647
+#define __INT32_TYPE__ int
+#define __INT64_C(c) c##LL
+#define __INT64_C_SUFFIX__ LL
+#define __INT64_FMTd__ "lld"
+#define __INT64_FMTi__ "lli"
+#define __INT64_MAX__ 9223372036854775807LL
+#define __INT64_TYPE__ long long int
+#define __INT8_C(c) c
+#define __INT8_C_SUFFIX__
+#define __INT8_FMTd__ "hhd"
+#define __INT8_FMTi__ "hhi"
+#define __INT8_MAX__ 127
+#define __INT8_TYPE__ signed char
+#define __INTMAX_C(c) c##L
+#define __INTMAX_C_SUFFIX__ L
+#define __INTMAX_FMTd__ "ld"
+#define __INTMAX_FMTi__ "li"
+#define __INTMAX_MAX__ 9223372036854775807L
+#define __INTMAX_TYPE__ long int
+#define __INTMAX_WIDTH__ 64
+#define __INTPTR_FMTd__ "ld"
+#define __INTPTR_FMTi__ "li"
+#define __INTPTR_MAX__ 9223372036854775807L
+#define __INTPTR_TYPE__ long int
+#define __INTPTR_WIDTH__ 64
+#define __INT_FAST16_FMTd__ "hd"
+#define __INT_FAST16_FMTi__ "hi"
+#define __INT_FAST16_MAX__ 32767
+#define __INT_FAST16_TYPE__ short
+#define __INT_FAST16_WIDTH__ 16
+#define __INT_FAST32_FMTd__ "d"
+#define __INT_FAST32_FMTi__ "i"
+#define __INT_FAST32_MAX__ 2147483647
+#define __INT_FAST32_TYPE__ int
+#define __INT_FAST32_WIDTH__ 32
+#define __INT_FAST64_FMTd__ "lld"
+#define __INT_FAST64_FMTi__ "lli"
+#define __INT_FAST64_MAX__ 9223372036854775807LL
+#define __INT_FAST64_TYPE__ long long int
+#define __INT_FAST64_WIDTH__ 64
+#define __INT_FAST8_FMTd__ "hhd"
+#define __INT_FAST8_FMTi__ "hhi"
+#define __INT_FAST8_MAX__ 127
+#define __INT_FAST8_TYPE__ signed char
+#define __INT_FAST8_WIDTH__ 8
+#define __INT_LEAST16_FMTd__ "hd"
+#define __INT_LEAST16_FMTi__ "hi"
+#define __INT_LEAST16_MAX__ 32767
+#define __INT_LEAST16_TYPE__ short
+#define __INT_LEAST16_WIDTH__ 16
+#define __INT_LEAST32_FMTd__ "d"
+#define __INT_LEAST32_FMTi__ "i"
+#define __INT_LEAST32_MAX__ 2147483647
+#define __INT_LEAST32_TYPE__ int
+#define __INT_LEAST32_WIDTH__ 32
+#define __INT_LEAST64_FMTd__ "lld"
+#define __INT_LEAST64_FMTi__ "lli"
+#define __INT_LEAST64_MAX__ 9223372036854775807LL
+#define __INT_LEAST64_TYPE__ long long int
+#define __INT_LEAST64_WIDTH__ 64
+#define __INT_LEAST8_FMTd__ "hhd"
+#define __INT_LEAST8_FMTi__ "hhi"
+#define __INT_LEAST8_MAX__ 127
+#define __INT_LEAST8_TYPE__ signed char
+#define __INT_LEAST8_WIDTH__ 8
+#define __INT_MAX__ 2147483647
+#define __INT_WIDTH__ 32
+#define __LDBL_DECIMAL_DIG__ 17
+#define __LDBL_DENORM_MIN__ 4.9406564584124654e-324L
+#define __LDBL_DIG__ 15
+#define __LDBL_EPSILON__ 2.2204460492503131e-16L
+#define __LDBL_HAS_DENORM__ 1
+#define __LDBL_HAS_INFINITY__ 1
+#define __LDBL_HAS_QUIET_NAN__ 1
+#define __LDBL_MANT_DIG__ 53
+#define __LDBL_MAX_10_EXP__ 308
+#define __LDBL_MAX_EXP__ 1024
+#define __LDBL_MAX__ 1.7976931348623157e+308L
+#define __LDBL_MIN_10_EXP__ (-307)
+#define __LDBL_MIN_EXP__ (-1021)
+#define __LDBL_MIN__ 2.2250738585072014e-308L
+#define __LDBL_NORM_MAX__ 1.7976931348623157e+308L
+#define __LITTLE_ENDIAN__ 1
+#define __LLONG_WIDTH__ 64
+#define __LONG_LONG_MAX__ 9223372036854775807LL
+#define __LONG_MAX__ 9223372036854775807L
+#define __LONG_WIDTH__ 64
+#define __LP64__ 1
+#define __MACH__ 1
+#define __MEMORY_SCOPE_DEVICE 1
+#define __MEMORY_SCOPE_SINGLE 4
+#define __MEMORY_SCOPE_SYSTEM 0
+#define __MEMORY_SCOPE_WRKGRP 2
+#define __MEMORY_SCOPE_WVFRNT 3
+#define __NO_INLINE__ 1
+#define __NO_MATH_ERRNO__ 1
+#define __OBJC_BOOL_IS_BOOL 1
+#define __OPENCL_MEMORY_SCOPE_ALL_SVM_DEVICES 3
+#define __OPENCL_MEMORY_SCOPE_DEVICE 2
+#define __OPENCL_MEMORY_SCOPE_SUB_GROUP 4
+#define __OPENCL_MEMORY_SCOPE_WORK_GROUP 1
+#define __OPENCL_MEMORY_SCOPE_WORK_ITEM 0
+#define __ORDER_BIG_ENDIAN__ 4321
+#define __ORDER_LITTLE_ENDIAN__ 1234
+#define __ORDER_PDP_ENDIAN__ 3412
+#define __PIC__ 2
+#define __POINTER_WIDTH__ 64
+#define __PRAGMA_REDEFINE_EXTNAME 1
+#define __PTRDIFF_FMTd__ "ld"
+#define __PTRDIFF_FMTi__ "li"
+#define __PTRDIFF_MAX__ 9223372036854775807L
+#define __PTRDIFF_TYPE__ long int
+#define __PTRDIFF_WIDTH__ 64
+#define __REGISTER_PREFIX__
+#define __SCHAR_MAX__ 127
+#define __SHRT_MAX__ 32767
+#define __SHRT_WIDTH__ 16
+#define __SIG_ATOMIC_MAX__ 2147483647
+#define __SIG_ATOMIC_WIDTH__ 32
+#define __SIZEOF_DOUBLE__ 8
+#define __SIZEOF_FLOAT__ 4
+#define __SIZEOF_INT128__ 16
+#define __SIZEOF_INT__ 4
+#define __SIZEOF_LONG_DOUBLE__ 8
+#define __SIZEOF_LONG_LONG__ 8
+#define __SIZEOF_LONG__ 8
+#define __SIZEOF_POINTER__ 8
+#define __SIZEOF_PTRDIFF_T__ 8
+#define __SIZEOF_SHORT__ 2
+#define __SIZEOF_SIZE_T__ 8
+#define __SIZEOF_WCHAR_T__ 4
+#define __SIZEOF_WINT_T__ 4
+#define __SIZE_FMTX__ "lX"
+#define __SIZE_FMTo__ "lo"
+#define __SIZE_FMTu__ "lu"
+#define __SIZE_FMTx__ "lx"
+#define __SIZE_MAX__ 18446744073709551615UL
+#define __SIZE_TYPE__ long unsigned int
+#define __SIZE_WIDTH__ 64
+#define __SSP__ 1
+#define __STDC_EMBED_EMPTY__ 2
+#define __STDC_EMBED_FOUND__ 1
+#define __STDC_EMBED_NOT_FOUND__ 0
+#define __STDC_HOSTED__ 1
+#define __STDC_NO_THREADS__ 1
+#define __STDC_UTF_16__ 1
+#define __STDC_UTF_32__ 1
+#define __STDC_VERSION__ 201710L
+#define __STDC__ 1
+#define __UINT16_C(c) c
+#define __UINT16_C_SUFFIX__
+#define __UINT16_FMTX__ "hX"
+#define __UINT16_FMTo__ "ho"
+#define __UINT16_FMTu__ "hu"
+#define __UINT16_FMTx__ "hx"
+#define __UINT16_MAX__ 65535
+#define __UINT16_TYPE__ unsigned short
+#define __UINT32_C(c) c##U
+#define __UINT32_C_SUFFIX__ U
+#define __UINT32_FMTX__ "X"
+#define __UINT32_FMTo__ "o"
+#define __UINT32_FMTu__ "u"
+#define __UINT32_FMTx__ "x"
+#define __UINT32_MAX__ 4294967295U
+#define __UINT32_TYPE__ unsigned int
+#define __UINT64_C(c) c##ULL
+#define __UINT64_C_SUFFIX__ ULL
+#define __UINT64_FMTX__ "llX"
+#define __UINT64_FMTo__ "llo"
+#define __UINT64_FMTu__ "llu"
+#define __UINT64_FMTx__ "llx"
+#define __UINT64_MAX__ 18446744073709551615ULL
+#define __UINT64_TYPE__ long long unsigned int
+#define __UINT8_C(c) c
+#define __UINT8_C_SUFFIX__
+#define __UINT8_FMTX__ "hhX"
+#define __UINT8_FMTo__ "hho"
+#define __UINT8_FMTu__ "hhu"
+#define __UINT8_FMTx__ "hhx"
+#define __UINT8_MAX__ 255
+#define __UINT8_TYPE__ unsigned char
+#define __UINTMAX_C(c) c##UL
+#define __UINTMAX_C_SUFFIX__ UL
+#define __UINTMAX_FMTX__ "lX"
+#define __UINTMAX_FMTo__ "lo"
+#define __UINTMAX_FMTu__ "lu"
+#define __UINTMAX_FMTx__ "lx"
+#define __UINTMAX_MAX__ 18446744073709551615UL
+#define __UINTMAX_TYPE__ long unsigned int
+#define __UINTMAX_WIDTH__ 64
+#define __UINTPTR_FMTX__ "lX"
+#define __UINTPTR_FMTo__ "lo"
+#define __UINTPTR_FMTu__ "lu"
+#define __UINTPTR_FMTx__ "lx"
+#define __UINTPTR_MAX__ 18446744073709551615UL
+#define __UINTPTR_TYPE__ long unsigned int
+#define __UINTPTR_WIDTH__ 64
+#define __UINT_FAST16_FMTX__ "hX"
+#define __UINT_FAST16_FMTo__ "ho"
+#define __UINT_FAST16_FMTu__ "hu"
+#define __UINT_FAST16_FMTx__ "hx"
+#define __UINT_FAST16_MAX__ 65535
+#define __UINT_FAST16_TYPE__ unsigned short
+#define __UINT_FAST32_FMTX__ "X"
+#define __UINT_FAST32_FMTo__ "o"
+#define __UINT_FAST32_FMTu__ "u"
+#define __UINT_FAST32_FMTx__ "x"
+#define __UINT_FAST32_MAX__ 4294967295U
+#define __UINT_FAST32_TYPE__ unsigned int
+#define __UINT_FAST64_FMTX__ "llX"
+#define __UINT_FAST64_FMTo__ "llo"
+#define __UINT_FAST64_FMTu__ "llu"
+#define __UINT_FAST64_FMTx__ "llx"
+#define __UINT_FAST64_MAX__ 18446744073709551615ULL
+#define __UINT_FAST64_TYPE__ long long unsigned int
+#define __UINT_FAST8_FMTX__ "hhX"
+#define __UINT_FAST8_FMTo__ "hho"
+#define __UINT_FAST8_FMTu__ "hhu"
+#define __UINT_FAST8_FMTx__ "hhx"
+#define __UINT_FAST8_MAX__ 255
+#define __UINT_FAST8_TYPE__ unsigned char
+#define __UINT_LEAST16_FMTX__ "hX"
+#define __UINT_LEAST16_FMTo__ "ho"
+#define __UINT_LEAST16_FMTu__ "hu"
+#define __UINT_LEAST16_FMTx__ "hx"
+#define __UINT_LEAST16_MAX__ 65535
+#define __UINT_LEAST16_TYPE__ unsigned short
+#define __UINT_LEAST32_FMTX__ "X"
+#define __UINT_LEAST32_FMTo__ "o"
+#define __UINT_LEAST32_FMTu__ "u"
+#define __UINT_LEAST32_FMTx__ "x"
+#define __UINT_LEAST32_MAX__ 4294967295U
+#define __UINT_LEAST32_TYPE__ unsigned int
+#define __UINT_LEAST64_FMTX__ "llX"
+#define __UINT_LEAST64_FMTo__ "llo"
+#define __UINT_LEAST64_FMTu__ "llu"
+#define __UINT_LEAST64_FMTx__ "llx"
+#define __UINT_LEAST64_MAX__ 18446744073709551615ULL
+#define __UINT_LEAST64_TYPE__ long long unsigned int
+#define __UINT_LEAST8_FMTX__ "hhX"
+#define __UINT_LEAST8_FMTo__ "hho"
+#define __UINT_LEAST8_FMTu__ "hhu"
+#define __UINT_LEAST8_FMTx__ "hhx"
+#define __UINT_LEAST8_MAX__ 255
+#define __UINT_LEAST8_TYPE__ unsigned char
+#define __USER_LABEL_PREFIX__ _
+#define __VERSION__ "Apple LLVM 21.0.0 (clang-2100.1.1.101)"
+#define __WCHAR_MAX__ 2147483647
+#define __WCHAR_TYPE__ int
+#define __WCHAR_WIDTH__ 32
+#define __WINT_MAX__ 2147483647
+#define __WINT_TYPE__ int
+#define __WINT_WIDTH__ 32
+#define __aarch64__ 1
+#define __apple_build_version__ 21000101
+#define __arm64 1
+#define __arm64__ 1
+#define __block __attribute__((__blocks__(byref)))
+#define __clang__ 1
+#define __clang_literal_encoding__ "UTF-8"
+#define __clang_major__ 21
+#define __clang_minor__ 0
+#define __clang_patchlevel__ 0
+#define __clang_version__ "21.0.0 (clang-2100.1.1.101)"
+#define __clang_wide_literal_encoding__ "UTF-32"
+#define __llvm__ 1
+#define __nonnull _Nonnull
+#define __null_unspecified _Null_unspecified
+#define __nullable _Nullable
+#define __pic__ 2
+#define __strong
+#define __unsafe_unretained
+#define __weak __attribute__((objc_gc(weak)))
+:end:
+
+- test_os.c
+#+begin_src C
+#include <stdio.h>
+
+int main() {
+  #ifdef __APPLE__
+      printf("Я на macOS\n");
+  #elif defined(_WIN32)
+      printf("Я на Шindows\n");
+    #endif
+
+    return 0;
+}
+#+end_src
+
+#+RESULTS:
+: Я на macOS
+
+#+begin_src shell :results output drawer
+clang -E ../CEd/Practice/test_os.c
+#+end_src
+
+#+RESULTS:
+:results:
+# 1 "../CEd/Practice/test_os.c"
+# 1 "<built-in>" 1
+# 1 "<built-in>" 3
+# 482 "<built-in>" 3
+# 1 "<command line>" 1
+# 1 "<built-in>" 2
+# 1 "../CEd/Practice/test_os.c" 2
+# 1 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/stdio.h" 1 3 4
+# 61 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/stdio.h" 3 4
+# 1 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/_stdio.h" 1 3 4
+# 69 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/_stdio.h" 3 4
+# 1 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/_bounds.h" 1 3 4
+# 27 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/_bounds.h" 3 4
+# 1 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h" 1 3 4
+# 808 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h" 3 4
+# 1 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/_symbol_aliasing.h" 1 3 4
+# 809 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h" 2 3 4
+# 874 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h" 3 4
+# 1 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/_posix_availability.h" 1 3 4
+# 875 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h" 2 3 4
+# 992 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h" 3 4
+# 1 "/Library/Developer/CommandLineTools/usr/lib/clang/21/include/ptrcheck.h" 1 3 4
+# 993 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h" 2 3 4
+# 28 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/_bounds.h" 2 3 4
+# 70 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/_stdio.h" 2 3 4
+
+# 1 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/Availability.h" 1 3 4
+# 196 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/Availability.h" 3 4
+# 1 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/AvailabilityVersions.h" 1 3 4
+# 197 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/Availability.h" 2 3 4
+# 1 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/AvailabilityInternal.h" 1 3 4
+# 33 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/AvailabilityInternal.h" 3 4
+# 1 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/AvailabilityVersions.h" 1 3 4
+# 34 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/AvailabilityInternal.h" 2 3 4
+# 198 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/Availability.h" 2 3 4
+# 1 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/AvailabilityInternalLegacy.h" 1 3 4
+# 34 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/AvailabilityInternalLegacy.h" 3 4
+# 1 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/AvailabilityInternal.h" 1 3 4
+# 35 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/AvailabilityInternalLegacy.h" 2 3 4
+# 199 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/Availability.h" 2 3 4
+# 72 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/_stdio.h" 2 3 4
+
+# 1 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/_types.h" 1 3 4
+# 27 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/_types.h" 3 4
+# 1 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/_types.h" 1 3 4
+# 33 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/_types.h" 3 4
+# 1 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/machine/_types.h" 1 3 4
+# 34 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/machine/_types.h" 3 4
+# 1 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/arm/_types.h" 1 3 4
+# 28 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/arm/_types.h" 3 4
+typedef signed char __int8_t;
+
+
+
+typedef unsigned char __uint8_t;
+typedef short __int16_t;
+typedef unsigned short __uint16_t;
+typedef int __int32_t;
+typedef unsigned int __uint32_t;
+typedef long long __int64_t;
+typedef unsigned long long __uint64_t;
+
+typedef long __darwin_intptr_t;
+typedef unsigned int __darwin_natural_t;
+# 61 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/arm/_types.h" 3 4
+typedef int __darwin_ct_rune_t;
+
+
+
+
+
+typedef union {
+ char __mbstate8[128];
+ long long _mbstateL;
+} __mbstate_t;
+
+typedef __mbstate_t __darwin_mbstate_t;
+
+
+
+
+typedef long int __darwin_ptrdiff_t;
+# 87 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/arm/_types.h" 3 4
+typedef long unsigned int __darwin_size_t;
+
+
+
+
+
+
+
+typedef __builtin_va_list __darwin_va_list;
+
+
+
+
+
+
+
+typedef int __darwin_wchar_t;
+
+
+
+
+typedef __darwin_wchar_t __darwin_rune_t;
+
+
+typedef int __darwin_wint_t;
+
+
+
+
+typedef unsigned long __darwin_clock_t;
+typedef __uint32_t __darwin_socklen_t;
+typedef long __darwin_ssize_t;
+typedef long __darwin_time_t;
+# 35 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/machine/_types.h" 2 3 4
+# 34 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/_types.h" 2 3 4
+# 67 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/_types.h" 3 4
+typedef __int64_t __darwin_blkcnt_t;
+typedef __int32_t __darwin_blksize_t;
+typedef __int32_t __darwin_dev_t;
+typedef unsigned int __darwin_fsblkcnt_t;
+typedef unsigned int __darwin_fsfilcnt_t;
+typedef __uint32_t __darwin_gid_t;
+typedef __uint32_t __darwin_id_t;
+typedef __uint64_t __darwin_ino64_t;
+
+typedef __darwin_ino64_t __darwin_ino_t;
+
+
+
+typedef __darwin_natural_t __darwin_mach_port_name_t;
+typedef __darwin_mach_port_name_t __darwin_mach_port_t;
+typedef __uint16_t __darwin_mode_t;
+typedef __int64_t __darwin_off_t;
+typedef __int32_t __darwin_pid_t;
+typedef __uint32_t __darwin_sigset_t;
+typedef __int32_t __darwin_suseconds_t;
+typedef __uint32_t __darwin_uid_t;
+typedef __uint32_t __darwin_useconds_t;
+typedef unsigned char __darwin_uuid_t[16];
+typedef char __darwin_uuid_string_t[37];
+
+
+
+# 1 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/_pthread/_pthread_types.h" 1 3 4
+# 57 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/_pthread/_pthread_types.h" 3 4
+struct __darwin_pthread_handler_rec {
+ void (*__routine)(void *);
+ void *__arg;
+ struct __darwin_pthread_handler_rec *__next;
+};
+
+struct _opaque_pthread_attr_t {
+ long __sig;
+ char __opaque[56];
+};
+
+struct _opaque_pthread_cond_t {
+ long __sig;
+ char __opaque[40];
+};
+
+struct _opaque_pthread_condattr_t {
+ long __sig;
+ char __opaque[8];
+};
+
+struct _opaque_pthread_mutex_t {
+ long __sig;
+ char __opaque[56];
+};
+
+struct _opaque_pthread_mutexattr_t {
+ long __sig;
+ char __opaque[8];
+};
+
+struct _opaque_pthread_once_t {
+ long __sig;
+ char __opaque[8];
+};
+
+struct _opaque_pthread_rwlock_t {
+ long __sig;
+ char __opaque[192];
+};
+
+struct _opaque_pthread_rwlockattr_t {
+ long __sig;
+ char __opaque[16];
+};
+
+struct _opaque_pthread_t {
+ long __sig;
+ struct __darwin_pthread_handler_rec *__cleanup_stack;
+ char __opaque[8176];
+};
+
+typedef struct _opaque_pthread_attr_t __darwin_pthread_attr_t;
+typedef struct _opaque_pthread_cond_t __darwin_pthread_cond_t;
+typedef struct _opaque_pthread_condattr_t __darwin_pthread_condattr_t;
+typedef unsigned long __darwin_pthread_key_t;
+typedef struct _opaque_pthread_mutex_t __darwin_pthread_mutex_t;
+typedef struct _opaque_pthread_mutexattr_t __darwin_pthread_mutexattr_t;
+typedef struct _opaque_pthread_once_t __darwin_pthread_once_t;
+typedef struct _opaque_pthread_rwlock_t __darwin_pthread_rwlock_t;
+typedef struct _opaque_pthread_rwlockattr_t __darwin_pthread_rwlockattr_t;
+typedef struct _opaque_pthread_t *__darwin_pthread_t;
+# 95 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/_types.h" 2 3 4
+# 28 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/_types.h" 2 3 4
+# 43 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/_types.h" 3 4
+typedef int __darwin_nl_item;
+typedef int __darwin_wctrans_t;
+
+typedef __uint32_t __darwin_wctype_t;
+# 74 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/_stdio.h" 2 3 4
+
+
+
+# 1 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/_types/_va_list.h" 1 3 4
+# 43 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/_types/_va_list.h" 3 4
+# 1 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/machine/types.h" 1 3 4
+# 37 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/machine/types.h" 3 4
+# 1 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/arm/types.h" 1 3 4
+# 55 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/arm/types.h" 3 4
+# 1 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/_types/_int8_t.h" 1 3 4
+# 30 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/_types/_int8_t.h" 3 4
+typedef signed char int8_t;
+# 56 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/arm/types.h" 2 3 4
+# 1 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/_types/_int16_t.h" 1 3 4
+# 30 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/_types/_int16_t.h" 3 4
+typedef short int16_t;
+# 57 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/arm/types.h" 2 3 4
+# 1 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/_types/_int32_t.h" 1 3 4
+# 30 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/_types/_int32_t.h" 3 4
+typedef int int32_t;
+# 58 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/arm/types.h" 2 3 4
+# 1 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/_types/_int64_t.h" 1 3 4
+# 30 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/_types/_int64_t.h" 3 4
+typedef long long int64_t;
+# 59 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/arm/types.h" 2 3 4
+
+# 1 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/_types/_u_int8_t.h" 1 3 4
+# 30 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/_types/_u_int8_t.h" 3 4
+typedef unsigned char u_int8_t;
+# 61 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/arm/types.h" 2 3 4
+# 1 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/_types/_u_int16_t.h" 1 3 4
+# 30 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/_types/_u_int16_t.h" 3 4
+typedef unsigned short u_int16_t;
+# 62 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/arm/types.h" 2 3 4
+# 1 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/_types/_u_int32_t.h" 1 3 4
+# 30 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/_types/_u_int32_t.h" 3 4
+typedef unsigned int u_int32_t;
+# 63 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/arm/types.h" 2 3 4
+# 1 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/_types/_u_int64_t.h" 1 3 4
+# 30 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/_types/_u_int64_t.h" 3 4
+typedef unsigned long long u_int64_t;
+# 64 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/arm/types.h" 2 3 4
+
+
+typedef int64_t register_t;
+
+
+
+
+# 1 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/_types/_intptr_t.h" 1 3 4
+# 32 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/_types/_intptr_t.h" 3 4
+typedef __darwin_intptr_t intptr_t;
+# 72 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/arm/types.h" 2 3 4
+# 1 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/_types/_uintptr_t.h" 1 3 4
+# 34 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/_types/_uintptr_t.h" 3 4
+typedef unsigned long uintptr_t;
+# 73 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/arm/types.h" 2 3 4
+
+
+
+
+typedef u_int64_t user_addr_t;
+typedef u_int64_t user_size_t;
+typedef int64_t user_ssize_t;
+typedef int64_t user_long_t;
+typedef u_int64_t user_ulong_t;
+typedef int64_t user_time_t;
+typedef int64_t user_off_t;
+# 105 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/arm/types.h" 3 4
+typedef u_int64_t syscall_arg_t;
+# 38 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/machine/types.h" 2 3 4
+# 44 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/_types/_va_list.h" 2 3 4
+typedef __darwin_va_list va_list;
+# 78 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/_stdio.h" 2 3 4
+# 1 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/_types/_size_t.h" 1 3 4
+# 50 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/_types/_size_t.h" 3 4
+typedef __darwin_size_t size_t;
+# 79 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/_stdio.h" 2 3 4
+# 1 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/_types/_null.h" 1 3 4
+# 80 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/_stdio.h" 2 3 4
+
+# 1 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/stdio.h" 1 3 4
+# 44 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/stdio.h" 3 4
+# 1 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/Availability.h" 1 3 4
+# 45 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/stdio.h" 2 3 4
+
+
+
+int renameat(int, const char *, int, const char *) __attribute__((availability(macosx,introduced=10.10)));
+
+
+
+int renamex_np(const char *, const char *, unsigned int) __attribute__((availability(macosx,introduced=10.12))) __attribute__((availability(ios,introduced=10.0))) __attribute__((availability(tvos,introduced=10.0))) __attribute__((availability(watchos,introduced=3.0)));
+int renameatx_np(int, const char *, int, const char *, unsigned int) __attribute__((availability(macosx,introduced=10.12))) __attribute__((availability(ios,introduced=10.0))) __attribute__((availability(tvos,introduced=10.0))) __attribute__((availability(watchos,introduced=3.0)));
+# 82 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/_stdio.h" 2 3 4
+# 1 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/_printf.h" 1 3 4
+# 34 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/_printf.h" 3 4
+int printf(const char * restrict, ...) __attribute__((__format__ (__printf__, 1, 2)));
+# 83 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/_stdio.h" 2 3 4
+
+
+
+typedef __darwin_off_t fpos_t;
+# 97 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/_stdio.h" 3 4
+struct __sbuf {
+ unsigned char * _base;
+ int _size;
+};
+
+
+struct __sFILEX;
+# 131 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/_stdio.h" 3 4
+typedef struct __sFILE {
+ unsigned char * _p;
+ int _r;
+ int _w;
+ short _flags;
+ short _file;
+ struct __sbuf _bf;
+ int _lbfsize;
+
+
+ void *_cookie;
+ int (* _Nullable _close)(void *);
+ int (* _Nullable _read) (void *, char *, int __n);
+ fpos_t (* _Nullable _seek) (void *, fpos_t, int);
+ int (* _Nullable _write)(void *, const char *, int __n);
+
+
+ struct __sbuf _ub;
+ struct __sFILEX *_extra;
+ int _ur;
+
+
+ unsigned char _ubuf[3];
+ unsigned char _nbuf[1];
+
+
+ struct __sbuf _lb;
+
+
+ int _blksize;
+ fpos_t _offset;
+} FILE;
+
+# 1 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/_types/_seek_set.h" 1 3 4
+# 165 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/_stdio.h" 2 3 4
+
+
+extern FILE *__stdinp __attribute__((__swift_attr__("nonisolated(unsafe)")));
+extern FILE *__stdoutp __attribute__((__swift_attr__("nonisolated(unsafe)")));
+extern FILE *__stderrp __attribute__((__swift_attr__("nonisolated(unsafe)")));
+# 232 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/_stdio.h" 3 4
+void clearerr(FILE *);
+int fclose(FILE *);
+int feof(FILE *);
+int ferror(FILE *);
+int fflush(FILE *);
+int fgetc(FILE *);
+int fgetpos(FILE * restrict, fpos_t *);
+char * fgets(char * restrict , int __size, FILE *);
+
+
+
+FILE *fopen(const char * restrict __filename, const char * restrict __mode) __asm("_" "fopen" );
+
+int fprintf(FILE * restrict, const char * restrict, ...) __attribute__((__format__ (__printf__, 2, 3)));
+int fputc(int, FILE *);
+int fputs(const char * restrict, FILE * restrict) __asm("_" "fputs" );
+size_t fread(void * restrict __ptr, size_t __size, size_t __nitems, FILE * restrict __stream);
+FILE *freopen(const char * restrict, const char * restrict,
+     FILE * restrict) __asm("_" "freopen" );
+int fscanf(FILE * restrict, const char * restrict, ...) __attribute__((__format__ (__scanf__, 2, 3)));
+int fseek(FILE *, long, int);
+int fsetpos(FILE *, const fpos_t *);
+long ftell(FILE *);
+size_t fwrite(const void * restrict __ptr, size_t __size, size_t __nitems, FILE * restrict __stream) __asm("_" "fwrite" );
+int getc(FILE *);
+int getchar(void);
+
+
+__attribute__((__deprecated__("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of gets(3), it is highly recommended that you use fgets(3) instead.")))
+
+char * gets(char *) ;
+
+void perror(const char *) __attribute__((__cold__));
+int putc(int, FILE *);
+int putchar(int);
+int puts(const char *);
+int remove(const char *);
+int rename (const char *__old, const char *__new);
+void rewind(FILE *);
+int scanf(const char * restrict, ...) __attribute__((__format__ (__scanf__, 1, 2)));
+void setbuf(FILE * restrict, char * restrict );
+int setvbuf(FILE * restrict, char * restrict , int, size_t __size);
+
+__attribute__((__availability__(swift, unavailable, message="Use snprintf instead.")))
+
+
+__attribute__((__deprecated__("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")))
+
+int sprintf(char * restrict , const char * restrict, ...) __attribute__((__format__ (__printf__, 2, 3))) ;
+
+int sscanf(const char * restrict, const char * restrict, ...) __attribute__((__format__ (__scanf__, 2, 3)));
+FILE *tmpfile(void);
+
+__attribute__((__availability__(swift, unavailable, message="Use mkstemp(3) instead.")))
+
+__attribute__((__deprecated__("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of tmpnam(3), it is highly recommended that you use mkstemp(3) instead.")))
+
+char * tmpnam(char *);
+
+int ungetc(int, FILE *);
+int vfprintf(FILE * restrict, const char * restrict, va_list) __attribute__((__format__ (__printf__, 2, 0)));
+int vprintf(const char * restrict, va_list) __attribute__((__format__ (__printf__, 1, 0)));
+
+__attribute__((__availability__(swift, unavailable, message="Use vsnprintf instead.")))
+
+
+__attribute__((__deprecated__("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use vsnprintf(3) instead.")))
+
+int vsprintf(char * restrict , const char * restrict, va_list) __attribute__((__format__ (__printf__, 2, 0))) ;
+# 315 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/_stdio.h" 3 4
+# 1 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/_ctermid.h" 1 3 4
+# 38 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/_ctermid.h" 3 4
+char * ctermid(char *);
+# 316 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/_stdio.h" 2 3 4
+
+
+
+
+
+
+FILE *fdopen(int, const char *) __asm("_" "fdopen" );
+
+int fileno(FILE *);
+# 335 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/_stdio.h" 3 4
+int pclose(FILE *) __attribute__((__availability__(swift, unavailable, message="Use posix_spawn APIs or NSTask instead. (On iOS, process spawning is unavailable.)")));
+
+
+
+FILE *popen(const char *, const char *) __asm("_" "popen" ) __attribute__((__availability__(swift, unavailable, message="Use posix_spawn APIs or NSTask instead. (On iOS, process spawning is unavailable.)")));
+# 354 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/_stdio.h" 3 4
+int __srget(FILE *);
+int __svfscanf(FILE *, const char *, va_list) __attribute__((__format__ (__scanf__, 2, 0)));
+int __swbuf(int, FILE *);
+# 365 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/_stdio.h" 3 4
+inline __attribute__ ((__always_inline__)) int __sputc(int _c, FILE *_p) {
+ if (--_p->_w >= 0 || (_p->_w >= _p->_lbfsize && (char)_c != '\n'))
+  return (*_p->_p++ = _c);
+ else
+  return (__swbuf(_c, _p));
+}
+# 391 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/_stdio.h" 3 4
+void flockfile(FILE *);
+int ftrylockfile(FILE *);
+void funlockfile(FILE *);
+int getc_unlocked(FILE *);
+int getchar_unlocked(void);
+int putc_unlocked(int, FILE *);
+int putchar_unlocked(int);
+
+
+
+int getw(FILE *);
+int putw(int, FILE *);
+
+
+__attribute__((__availability__(swift, unavailable, message="Use mkstemp(3) instead.")))
+
+__attribute__((__deprecated__("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of tempnam(3), it is highly recommended that you use mkstemp(3) instead.")))
+
+char * tempnam(const char *__dir, const char *__prefix) __asm("_" "tempnam" );
+# 429 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/_stdio.h" 3 4
+# 1 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/_types/_off_t.h" 1 3 4
+# 31 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/_types/_off_t.h" 3 4
+typedef __darwin_off_t off_t;
+# 430 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/_stdio.h" 2 3 4
+
+
+int fseeko(FILE * __stream, off_t __offset, int __whence);
+off_t ftello(FILE * __stream);
+
+
+
+
+
+int snprintf(char * restrict __str, size_t __size, const char * restrict __format, ...) __attribute__((__format__ (__printf__, 3, 4)));
+int vfscanf(FILE * restrict __stream, const char * restrict __format, va_list) __attribute__((__format__ (__scanf__, 2, 0)));
+int vscanf(const char * restrict __format, va_list) __attribute__((__format__ (__scanf__, 1, 0)));
+int vsnprintf(char * restrict __str, size_t __size, const char * restrict __format, va_list) __attribute__((__format__ (__printf__, 3, 0)));
+int vsscanf(const char * restrict __str, const char * restrict __format, va_list) __attribute__((__format__ (__scanf__, 2, 0)));
+# 454 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/_stdio.h" 3 4
+# 1 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/_types/_ssize_t.h" 1 3 4
+# 31 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/_types/_ssize_t.h" 3 4
+typedef __darwin_ssize_t ssize_t;
+# 455 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/_stdio.h" 2 3 4
+
+
+int dprintf(int, const char * restrict, ...) __attribute__((__format__ (__printf__, 2, 3))) __attribute__((availability(macosx,introduced=10.7)));
+int vdprintf(int, const char * restrict, va_list) __attribute__((__format__ (__printf__, 2, 0))) __attribute__((availability(macosx,introduced=10.7)));
+ssize_t getdelim(char * *restrict __linep, size_t * restrict __linecapp, int __delimiter, FILE * restrict __stream) __attribute__((availability(macosx,introduced=10.7)));
+ssize_t getline(char * *restrict __linep, size_t * restrict __linecapp, FILE * restrict __stream) __attribute__((availability(macosx,introduced=10.7)));
+FILE *fmemopen(void * restrict __buf , size_t __size, const char * restrict __mode) __attribute__((availability(macos,introduced=10.13))) __attribute__((availability(ios,introduced=11.0))) __attribute__((availability(tvos,introduced=11.0))) __attribute__((availability(watchos,introduced=4.0)));
+FILE *open_memstream(char * *__bufp, size_t *__sizep) __attribute__((availability(macos,introduced=10.13))) __attribute__((availability(ios,introduced=11.0))) __attribute__((availability(tvos,introduced=11.0))) __attribute__((availability(watchos,introduced=4.0)));
+# 472 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/_stdio.h" 3 4
+extern const int sys_nerr;
+extern const char *const sys_errlist[];
+
+int asprintf(char * *restrict, const char * restrict, ...) __attribute__((__format__ (__printf__, 2, 3)));
+char * ctermid_r(char *);
+char * fgetln(FILE *, size_t *__len);
+const char *fmtcheck(const char *, const char *) __attribute__((format_arg(2)));
+int fpurge(FILE *);
+void setbuffer(FILE *, char *, int __size);
+int setlinebuf(FILE *);
+int vasprintf(char * *restrict, const char * restrict, va_list) __attribute__((__format__ (__printf__, 2, 0)));
+
+
+
+
+
+FILE *funopen(const void *,
+     int (* _Nullable)(void *, char *, int __n),
+     int (* _Nullable)(void *, const char *, int __n),
+     fpos_t (* _Nullable)(void *, fpos_t, int),
+     int (* _Nullable)(void *));
+# 507 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/_stdio.h" 3 4
+# 1 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/secure/_stdio.h" 1 3 4
+# 32 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/secure/_stdio.h" 3 4
+# 1 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/secure/_common.h" 1 3 4
+# 33 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/secure/_stdio.h" 2 3 4
+
+
+
+
+
+extern int __snprintf_chk (char * restrict , size_t __maxlen, int, size_t,
+     const char * restrict, ...);
+extern int __vsnprintf_chk (char * restrict , size_t __maxlen, int, size_t,
+     const char * restrict, va_list);
+
+extern int __sprintf_chk (char * restrict , int, size_t,
+     const char * restrict, ...);
+extern int __vsprintf_chk (char * restrict , int, size_t,
+     const char * restrict, va_list);
+# 508 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/_stdio.h" 2 3 4
+# 62 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/stdio.h" 2 3 4
+# 2 "../CEd/Practice/test_os.c" 2
+
+int main() {
+
+      printf("Я на macOS");
+
+
+
+
+    return 0;
+}
+:end:
+
+#+begin_src shell :results output verbatim
+clang -target -x86_64-pc-windows-msvc -E ../CEd/Practice/test_os.c 2>&1
+#+end_src
+
+#+RESULTS:
+#+begin_example
+../CEd/Practice/test_os.c:1:10: fatal error: 'stdio.h' file not found
+    1 | #include <stdio.h>
+      |          ^~~~~~~~~
+# 1 "../CEd/Practice/test_os.c"
+# 1 "<built-in>" 1
+# 1 "<built-in>" 3
+# 395 "<built-in>" 3
+# 1 "<command line>" 1
+# 1 "<built-in>" 2
+# 1 "../CEd/Practice/test_os.c" 2
+
+
+int main() {
+
+
+
+      printf("Я на Шindows\n");
+
+
+    return 0;
+}
+1 error generated.
+#+end_example
+
+*** Тесты IR
+#+begin_src  shell :results output code :dir ../CEd/Practice
+llvm-clang -S -emit-llvm test_os.c
+cat test_os.ll
+#+end_src
+
+Почему оптимизируется для M1?
+#+RESULTS:
+#+begin_src shell
+; ModuleID = 'test_os.c'
+source_filename = "test_os.c"
+
+target datalayout = "e-m:o-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-n32:64-S128-Fn32"
+target triple = "arm64-apple-macosx26.0.0"
+
+; Мой коммент: xD0\AF \D0\BD\D0\B0 macOS\0A\00 = Я на macOS\n
+@.str = private unnamed_addr constant [15 x i8] c"\D0\AF \D0\BD\D0\B0 macOS\0A\00", align 1
+
+; Function Attrs: noinline nounwind optnone ssp uwtable(sync)
+define i32 @main() #0 {
+  %1 = alloca i32, align 4
+  store i32 0, ptr %1, align 4
+  %2 = call i32 (ptr, ...) @printf(ptr noundef @.str)
+  ret i32 0
+}
+
+declare i32 @printf(ptr noundef, ...) #1
+
+attributes #0 = { noinline nounwind optnone ssp uwtable(sync) "frame-pointer"="non-leaf-no-reserve" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="apple-m1" "target-features"="+aes,+altnzcv,+ccdp,+ccidx,+ccpp,+complxnum,+crc,+dit,+dotprod,+flagm,+fp-armv8,+fp16fml,+fptoint,+fullfp16,+jsconv,+lse,+neon,+pauth,+perfmon,+predres,+ras,+rcpc,+rdm,+sb,+sha2,+sha3,+specrestrict,+ssbs,+v8.1a,+v8.2a,+v8.3a,+v8.4a,+v8a" }
+attributes #1 = { "frame-pointer"="non-leaf-no-reserve" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="apple-m1" "target-features"="+aes,+altnzcv,+ccdp,+ccidx,+ccpp,+complxnum,+crc,+dit,+dotprod,+flagm,+fp-armv8,+fp16fml,+fptoint,+fullfp16,+jsconv,+lse,+neon,+pauth,+perfmon,+predres,+ras,+rcpc,+rdm,+sb,+sha2,+sha3,+specrestrict,+ssbs,+v8.1a,+v8.2a,+v8.3a,+v8.4a,+v8a" }
+
+!llvm.module.flags = !{!0, !1, !2, !3, !4}
+!llvm.ident = !{!5}
+
+!0 = !{i32 2, !"SDK Version", [2 x i32] [i32 26, i32 5]}
+!1 = !{i32 1, !"wchar_size", i32 4}
+!2 = !{i32 8, !"PIC Level", i32 2}
+!3 = !{i32 7, !"uwtable", i32 1}
+!4 = !{i32 7, !"frame-pointer", i32 4}
+!5 = !{!"Homebrew clang version 22.1.6"}
+#+end_src
+
+
+** readelf
+#+begin_src bash
+ascher@ Practice % llvm-readelf -h test.o
+ELF Header:
+  Magic:   7f 45 4c 46 02 01 01 00 00 00 00 00 00 00 00 00
+  Class:                             ELF64
+  Data:                              2's complement, little endian
+  Version:                           1 (current)
+  OS/ABI:                            UNIX - System V
+  ABI Version:                       0
+  Type:                              REL (Relocatable file)
+  Machine:                           Advanced Micro Devices X86-64
+  Version:                           0x1
+  Entry point address:               0x0
+  Start of program headers:          0 (bytes into file)
+  Start of section headers:          384 (bytes into file)
+  Flags:                             0x0
+  Size of this header:               64 (bytes)
+  Size of program headers:           0 (bytes)
+  Number of program headers:         0
+  Size of section headers:           64 (bytes)
+  Number of section headers:         9
+  Section header string table index: 1
+#+end_src
+
+
+* Question
+Есть ли разница между llvm, gnu, clang binutils?

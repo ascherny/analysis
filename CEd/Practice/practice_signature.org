@@ -20,9 +20,10 @@ SDL2.dll
 zlib1.dll
 #+end_example
 
+* objdump cheatsheet :objdump:
+-d - disasssemble
 0x004028cb
-
-
+* Символы
 #+begin_src shell :dir . :results output
 babel-shell llvm-objdump -t signature/Magic8Ball.exe
 #+end_src
@@ -39,3 +40,254 @@ babel-shell llvm-nm signature/Magic8Ball.exe
 
 #+RESULTS:
 : signature/Magic8Ball.exe: no symbols
+
+* Дизасм
+#+begin_src shell :dir . :results output
+babel-shell llvm-objdump -d signature/Magic8Ball.exe | grep "4028cb"
+#+end_src
+
+#+RESULTS:
+:   4020a9: e8 1d 08 00 00               	calll	0x4028cb <.text+0x18cb>
+:   402116: e8 b0 07 00 00               	calll	0x4028cb <.text+0x18cb>
+:   4028cb: ff 25 d8 40 40 00            	jmpl	*0x4040d8
+
+- Вызов функции инструкцией jump long
+
+#+begin_src shell :dir . :results output
+babel-shell objdump -x signature/Magic8Ball.exe | grep -A 40 "The Import Tables"
+#+end_src
+
+#+RESULTS:
+#+begin_example
+The Import Tables (interpreted .rdata section contents)
+ vma:            Hint    Time      Forward  DLL       First
+                 Table   Stamp     Chain    Name      Thunk
+ 00004ce4	00004ea4 00000000 00000000 00005150 00004080
+
+	DLL Name: SDL2.dll
+	vma:     Ordinal  Hint  Member-Name  Bound-To
+	00004080  <none>  0328  SDL_wcslen
+	00004084  <none>  0307  SDL_strlen
+	00004088  <none>  02d7  SDL_iconv_string
+	0000408c  <none>  0240  SDL_SetMainReady
+	00004090  <none>  0041  SDL_Delay
+	00004094  <none>  00fd  SDL_GetTicks
+	00004098  <none>  01d5  SDL_Quit
+	0000409c  <none>  02bf  SDL_free
+	000040a0  <none>  0150  SDL_Init
+	000040a4  <none>  0045  SDL_DestroyRenderer
+	000040a8  <none>  0047  SDL_DestroyTexture
+	000040ac  <none>  0211  SDL_RenderPresent
+	000040b0  <none>  01ee  SDL_RenderCopy
+	000040b4  <none>  01ed  SDL_RenderClear
+	000040b8  <none>  0247  SDL_SetRenderDrawColor
+	000040bc  <none>  0037  SDL_CreateTextureFromSurface
+	000040c0  <none>  0031  SDL_CreateRenderer
+	000040c4  <none>  01cf  SDL_PollEvent
+	000040c8  <none>  0274  SDL_StartTextInput
+	000040cc  <none>  0048  SDL_DestroyWindow
+	000040d0  <none>  003a  SDL_CreateWindow
+	000040d4  <none>  005d  SDL_FreeSurface
+	000040d8  <none>  00c0  SDL_GetError
+	000040dc  <none>  0270  SDL_ShowSimpleMessageBox
+
+ 00004cf8	00004f08 00000000 00000000 00005172 000040e4
+
+	DLL Name: SDL2_image.dll
+	vma:     Ordinal  Hint  Member-Name  Bound-To
+	000040e4  <none>  0000  IMG_Init
+	000040e8  <none>  0002  IMG_Load
+
+ 00004d0c	00004f14 00000000 00000000 000051d6 000040f0
+
+#+end_example
+
+#+begin_src shell :dir . :results output
+babel-shell llvm-readobj --coff-imports signature/Magic8Ball.exe
+#+end_src
+
+#+RESULTS:
+#+begin_example
+
+File: signature/Magic8Ball.exe
+Format: COFF-i386
+Arch: i386
+AddressSize: 32bit
+Import {
+  Name: SDL2.dll
+  ImportLookupTableRVA: 0x4EA4
+  ImportAddressTableRVA: 0x4080
+  Symbol: SDL_wcslen (808)
+  Symbol: SDL_strlen (775)
+  Symbol: SDL_iconv_string (727)
+  Symbol: SDL_SetMainReady (576)
+  Symbol: SDL_Delay (65)
+  Symbol: SDL_GetTicks (253)
+  Symbol: SDL_Quit (469)
+  Symbol: SDL_free (703)
+  Symbol: SDL_Init (336)
+  Symbol: SDL_DestroyRenderer (69)
+  Symbol: SDL_DestroyTexture (71)
+  Symbol: SDL_RenderPresent (529)
+  Symbol: SDL_RenderCopy (494)
+  Symbol: SDL_RenderClear (493)
+  Symbol: SDL_SetRenderDrawColor (583)
+  Symbol: SDL_CreateTextureFromSurface (55)
+  Symbol: SDL_CreateRenderer (49)
+  Symbol: SDL_PollEvent (463)
+  Symbol: SDL_StartTextInput (628)
+  Symbol: SDL_DestroyWindow (72)
+  Symbol: SDL_CreateWindow (58)
+  Symbol: SDL_FreeSurface (93)
+  Symbol: SDL_GetError (192)
+  Symbol: SDL_ShowSimpleMessageBox (624)
+}
+Import {
+  Name: SDL2_image.dll
+  ImportLookupTableRVA: 0x4F08
+  ImportAddressTableRVA: 0x40E4
+  Symbol: IMG_Init (0)
+  Symbol: IMG_Load (2)
+}
+Import {
+  Name: SDL2_ttf.dll
+  ImportLookupTableRVA: 0x4F14
+  ImportAddressTableRVA: 0x40F0
+  Symbol: TTF_OpenFont (29)
+  Symbol: TTF_RenderText_Solid_Wrapped (49)
+  Symbol: TTF_Init (24)
+  Symbol: TTF_RenderText_Solid (48)
+}
+Import {
+  Name: MSVCP140.dll
+  ImportLookupTableRVA: 0x4E70
+  ImportAddressTableRVA: 0x404C
+  Symbol: ?widen@?$basic_ios@DU?$char_traits@D@std@@@std@@QBEDD@Z (1332)
+  Symbol: ?setstate@?$basic_ios@DU?$char_traits@D@std@@@std@@QAEXH_N@Z (1221)
+  Symbol: ?sputn@?$basic_streambuf@DU?$char_traits@D@std@@@std@@QAE_JPBD_J@Z (1249)
+  Symbol: ?_Osfx@?$basic_ostream@DU?$char_traits@D@std@@@std@@QAEXXZ (580)
+  Symbol: ??6?$basic_ostream@DU?$char_traits@D@std@@@std@@QAEAAV01@P6AAAV01@AAV01@@Z@Z (262)
+  Symbol: ?flush@?$basic_ostream@DU?$char_traits@D@std@@@std@@QAEAAV12@XZ (872)
+  Symbol: ?cerr@std@@3V?$basic_ostream@DU?$char_traits@D@std@@@1@A (674)
+  Symbol: ?put@?$basic_ostream@DU?$char_traits@D@std@@@std@@QAEAAV12@D@Z (1121)
+  Symbol: ?uncaught_exception@std@@YA_NXZ (1310)
+  Symbol: ?_Xlength_error@std@@YAXPBD@Z (654)
+  Symbol: ?_Xout_of_range@std@@YAXPBD@Z (655)
+  Symbol: ?sputc@?$basic_streambuf@DU?$char_traits@D@std@@@std@@QAEHD@Z (1246)
+}
+Import {
+  Name: VCRUNTIME140.dll
+  ImportLookupTableRVA: 0x4F30
+  ImportAddressTableRVA: 0x410C
+  Symbol: __std_exception_destroy (34)
+  Symbol: _CxxThrowException (1)
+  Symbol: __CxxFrameHandler3 (16)
+  Symbol: memcpy (70)
+  Symbol: memmove (71)
+  Symbol: __std_exception_copy (33)
+  Symbol: __current_exception (28)
+  Symbol: __current_exception_context (29)
+  Symbol: _except_handler4_common (53)
+  Symbol: __std_terminate (35)
+  Symbol: memset (72)
+}
+Import {
+  Name: api-ms-win-crt-runtime-l1-1-0.dll
+  ImportLookupTableRVA: 0x4F84
+  ImportAddressTableRVA: 0x4160
+  Symbol: _controlfp_s (29)
+  Symbol: _seh_filter_exe (66)
+  Symbol: terminate (106)
+  Symbol: _crt_atexit (31)
+  Symbol: _initialize_onexit_table (54)
+  Symbol: _invalid_parameter_noinfo_noreturn (59)
+  Symbol: _configure_narrow_argv (25)
+  Symbol: _register_onexit_function (62)
+  Symbol: _set_app_type (68)
+  Symbol: _register_thread_local_exe_atexit_callback (63)
+  Symbol: _c_exit (22)
+  Symbol: _cexit (23)
+  Symbol: _initialize_narrow_environment (53)
+  Symbol: _exit (37)
+  Symbol: exit (88)
+  Symbol: _initterm_e (57)
+  Symbol: _initterm (56)
+  Symbol: _get_narrow_winmain_command_line (45)
+}
+Import {
+  Name: api-ms-win-crt-string-l1-1-0.dll
+  ImportLookupTableRVA: 0x4FDC
+  ImportAddressTableRVA: 0x41B8
+  Symbol: strncmp (142)
+}
+Import {
+  Name: api-ms-win-crt-utility-l1-1-0.dll
+  ImportLookupTableRVA: 0x4FEC
+  ImportAddressTableRVA: 0x41C8
+  Symbol: rand (27)
+  Symbol: srand (29)
+}
+Import {
+  Name: api-ms-win-crt-time-l1-1-0.dll
+  ImportLookupTableRVA: 0x4FE4
+  ImportAddressTableRVA: 0x41C0
+  Symbol: _time64 (48)
+}
+Import {
+  Name: api-ms-win-crt-heap-l1-1-0.dll
+  ImportLookupTableRVA: 0x4F60
+  ImportAddressTableRVA: 0x413C
+  Symbol: _set_new_mode (22)
+  Symbol: malloc (25)
+  Symbol: free (24)
+  Symbol: _callnewh (8)
+}
+Import {
+  Name: api-ms-win-crt-math-l1-1-0.dll
+  ImportLookupTableRVA: 0x4F7C
+  ImportAddressTableRVA: 0x4158
+  Symbol: __setusermatherr (46)
+}
+Import {
+  Name: api-ms-win-crt-stdio-l1-1-0.dll
+  ImportLookupTableRVA: 0x4FD0
+  ImportAddressTableRVA: 0x41AC
+  Symbol: _set_fmode (84)
+  Symbol: __p__commode (1)
+}
+Import {
+  Name: api-ms-win-crt-locale-l1-1-0.dll
+  ImportLookupTableRVA: 0x4F74
+  ImportAddressTableRVA: 0x4150
+  Symbol: _configthreadlocale (8)
+}
+Import {
+  Name: KERNEL32.dll
+  ImportLookupTableRVA: 0x4E24
+  ImportAddressTableRVA: 0x4000
+  Symbol: UnhandledExceptionFilter (1457)
+  Symbol: SetUnhandledExceptionFilter (1393)
+  Symbol: GetCurrentProcess (538)
+  Symbol: TerminateProcess (1424)
+  Symbol: IsProcessorFeaturePresent (905)
+  Symbol: QueryPerformanceCounter (1103)
+  Symbol: GetCurrentProcessId (539)
+  Symbol: GetCurrentThreadId (543)
+  Symbol: GetSystemTimeAsFileTime (748)
+  Symbol: InitializeSListHead (870)
+  Symbol: IsDebuggerPresent (898)
+  Symbol: GetStartupInfoW (723)
+  Symbol: GetModuleHandleW (635)
+  Symbol: GetCommandLineW (474)
+  Symbol: HeapAlloc (840)
+  Symbol: GetProcessHeap (695)
+  Symbol: LocalFree (979)
+  Symbol: HeapFree (844)
+}
+Import {
+  Name: SHELL32.dll
+  ImportLookupTableRVA: 0x4F28
+  ImportAddressTableRVA: 0x4104
+  Symbol: CommandLineToArgvW (8)
+}
+#+end_example
