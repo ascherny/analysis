@@ -18,48 +18,47 @@ SDL2_ttf.dll
 SDL2.dll
 zlib1.dll
 #+end_example
-* TEMP
-  #+begin_src C
-  result = SDL_PollEvent(&v7);
-    if ( result )
-    {
-      while ( v7.type <= SDL_KEYUP )              // KEY <= 0x301
-      {
-        switch ( v7.type )                        // SWITCH ot key
-        {
-          case SDL_KEYUP:                         // if KEY = KEYUP
-            switch ( v7.window.data2 )            // data2 = /**< event dependent data */
-            {
-              case SDLK_RIGHT:
-                if ( *(this + 359) )              // ~= *(this + N) = 0
-                  *(this + 359) = 0;
-                break;
-              case SDLK_LEFT:
-                if ( *(this + 358) )
-                  *(this + 358) = 0;
-                break;
-              case SDLK_DOWN:
-                if ( *(this + 357) )
-                  *(this + 357) = 0;
-                break;
-              case SDLK_UP:
-                if ( *(this + 356) )
-                  *(this + 356) = 0;
-                break;
-              default:
-                goto LABEL_40;
-            }
 
-  #+end_src
-  Подробное описание паттерна
-    case SDLK_RIGHT:
-    if ( *(this + 359) )              // ~= *(this + N) = 0
-        *(this + 359) = 0;
+* TEMP
 #+begin_src C
+result = SDL_PollEvent(&v7);
+if ( result )
+{
+    while ( v7.type <= SDL_KEYUP )              // KEY <= 0x301
+    {
+    switch ( v7.type )                        // SWITCH ot key
+    {
+        case SDL_KEYUP:                         // if KEY = KEYUP
+        switch ( v7.window.data2 )            // data2 = /**< event dependent data */
+        {
+            case SDLK_RIGHT:
+            if ( *(this + 359) )              // ~= *(this + N) = 0
+                *(this + 359) = 0;
+            break;
+            case SDLK_LEFT:
+            if ( *(this + 358) )
+                *(this + 358) = 0;
+            break;
+            case SDLK_DOWN:
+            if ( *(this + 357) )
+                *(this + 357) = 0;
+            break;
+            case SDLK_UP:
+            if ( *(this + 356) )
+                *(this + 356) = 0;
+            break;
+            default:
+            goto LABEL_40;
+        }
+
+#+end_src
+
+Получается мы жмем кнопки и отбрасываем/обрабатываем?
+#+begin_src C
+
 while (key <= key_0x301){
-   switch (key){
-     // ТУТ ЕСТЬ ЕЩЕ SWITCH но я не пойму разницу между v7.type и v7.window.data2
-       if (some_key) {
+   switch (key){ // v7,type ~ отвечает за то что за ивент произошел, в нашем случае KEYUP нажатие кнопки
+       if (some_key) { // IDA назвала это v7.windows.data2 ~ отвечает за то какая именно KEYUP произошла
          some_flag = 0
         }
        if (some_key) {
@@ -348,7 +347,7 @@ Import {
 }
 #+end_example
 
-* IDA
+* IDA :ida:reverse:
 G -> 004028cb
 G -> 0040227b -> google
 
@@ -412,6 +411,25 @@ typedef union SDL_Event
 } SDL_Event;
 
 #+end_src
+
+- SDL_Event это union - структура где все поля начинаются с одного адреса
+  В зависимости от того откуда мы читаем одни и те же байты берут разные имена
+  Есть инфа что ида может ошибиться и дать имя относительно не того объекта ??
+
+  Условная память SDL_Event :
+
+    Байты:  [0  1  2  3] [4  5  6  7] [8  9  10  11] ...
+            |___________|
+                ↑
+            .type (Uint32, 4 байта) -  поле, есть у всех событий
+
+            |___________|____________|_______________|
+                ↑            ↑              ↑
+            key.type    key.scancode   key.sym (код клавиши)
+
+            |___________|____________|_______________|
+                ↑            ↑              ↑
+            window.type  window.windowID  window.data1 ...window.data2
 
 *** SDL_EventType
 #+begin_src C
@@ -779,3 +797,127 @@ LABEL_40:
   return result;
 }
 #+end_src
+* Важный предытог
+Разбираться с функцией обрабатывающей PollEvent крайне интересно и относительно полезно, но по пути того как появляется понимание ее работы появляется понимание что не она отвечает за логику ответа, и изначально присвоиное название handler было правильным, но мне нужен не хендлер, поэтому дропаем и идем дальше к функции дающей ответ
+
+Пройдясь по строкам нашел функцию которая содержит базовые ответы -> xref и приходим к main loop игры -> в нем находим хендлер и функцию идущую после него, в ней явно есть обработка каких-то значений и это уже больше похоже на кандидата для исследования
+* Таргет функция (?)
+Тут есть последовательность LLURULDUL что-то типо конами и потом strncmp
+  #+begin_src C
+  if ( *(_BYTE *)(this + 345) )
+    {
+      result = (SDL_Surface *)v4[5];
+      v12 = v4;
+      if ( (unsigned int)result >= 0x10 )
+        v12 = (_BYTE *)*v4;
+      if ( *v12 == 'L' )
+      {
+        v13 = v4;
+        if ( (unsigned int)result >= 0x10 )
+          v13 = (_BYTE *)*v4;
+        if ( v13[1] == 'L' )
+        {
+          v14 = v4;
+          if ( (unsigned int)result >= 0x10 )
+            v14 = (_BYTE *)*v4;
+          if ( v14[2] == 'U' )
+          {
+            v15 = v4;
+            if ( (unsigned int)result >= 0x10 )
+              v15 = (_BYTE *)*v4;
+            if ( v15[3] == 'R' )
+            {
+              v16 = v4;
+              if ( (unsigned int)result >= 0x10 )
+                v16 = (_BYTE *)*v4;
+              if ( v16[4] == 'U' )
+              {
+                v17 = v4;
+                if ( (unsigned int)result >= 0x10 )
+                  v17 = (_BYTE *)*v4;
+                if ( v17[5] == 'L' )
+                {
+                  v18 = v4;
+                  if ( (unsigned int)result >= 0x10 )
+                    v18 = (_BYTE *)*v4;
+                  if ( v18[6] == 'D' )
+                  {
+                    v19 = v4;
+                    if ( (unsigned int)result >= 0x10 )
+                      v19 = (_BYTE *)*v4;
+                    if ( v19[7] == 'U' )
+                    {
+                      v20 = v4;
+                      if ( (unsigned int)result >= 0x10 )
+                        v20 = (_BYTE *)*v4;
+                      if ( v20[8] == 'L' )
+                      {
+                        v21 = (const char *)(this + 248);
+                        if ( *(_DWORD *)(this + 268) >= 0x10u )
+                          v21 = *(const char **)v21;
+                        result = (SDL_Surface *)strncmp(v21, (const char *)(this + 92), 0xFu);
+                        if ( !result )
+                        {
+                          sub_401220(v4);
+                          return (SDL_Surface *)sub_401A10(v22, v23, v24, v25, v26, v27);
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  #+end_src
+
+strncmp сравнивает ввод с 15 символами которые лежат в (const char *)(this + 92)
+
+ищем что за this + 92, мы знаем два факта из предыдущего анализа - this + N статична и this = edi
+сначала ищем конструктор, может в нем есть что-то
+в main loop была функция перед которой освободается память и чет инициируется
+  #+begin_src C
+  v0 = operator new(0x174u);
+    v1 = v0;
+    if ( v0 )
+    {
+      memset(v0, 0, 0x174u);
+      v2 = sub_4012B0(v1);
+    }
+    else
+    {
+      v2 = nullptr;
+    }
+  #+end_src
+Заходим и ничего не находим по смещению +92
+Дальше пробуем дизасм -> alt+t [edi+5Ch]
+и находим
+#+begin_src asm
+.text:004021A1                 mov     dword ptr [edi+5Ch], 6D6D6967h
+.text:004021A8                 mov     dword ptr [edi+60h], 6C662065h
+.text:004021AF                 mov     dword ptr [edi+64h], 70206761h
+.text:004021B6                 mov     dword ptr [edi+68h], 3F736Ch
+#+end_src
+
+~dida
+
+6D6D6967h
+6C662065h
+70206761h
+3F736Ch
+Это lil endian -> 0x67696D6D 0x6520666C 0x61672070 0x3F736C
+
+Получается
+LLURULDUL +
+gimme flag pls?
+
+  U_cRackeD_th1$_maG1 cBaLLA_@flare-on.com
+
+** spoiler
+  SDL_GetError
+  SDL_Texture * SDL_CreateTextureFromSurface(SDL_Renderer * renderer, SDL_Surface * surface);
+  SDL_PollEvent
+  LLURULDUL
+  U_cRackeD_th1$_maG1cBaLL_!!_@flare-on.com
