@@ -1,0 +1,24 @@
+IDA 
+
+Shift + F1 → Structures
+
+Как пользовать структурс эффективно?
+
+
+
+IDA логика
+
+Открываем, видим функцию start - это wingui 
+
+Паттерны gui
+
+RegisterClassExA(...)
+CreateWindowExA(...)
+GetMessageA(...)
+DispatchMessageA(...)
+
+
+Изучить сигнатуру WIN
+
+  * [ ] Написать мини гуи и зареверсить 
+

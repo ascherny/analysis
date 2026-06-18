@@ -1,5 +1,4 @@
-#+title: Practice Signature
-
+#+title: Practice Signature Magic Ball
 
 
 #+begin_src shell :dir . :results output
@@ -19,6 +18,63 @@ SDL2_ttf.dll
 SDL2.dll
 zlib1.dll
 #+end_example
+* TEMP
+  #+begin_src C
+  result = SDL_PollEvent(&v7);
+    if ( result )
+    {
+      while ( v7.type <= SDL_KEYUP )              // KEY <= 0x301
+      {
+        switch ( v7.type )                        // SWITCH ot key
+        {
+          case SDL_KEYUP:                         // if KEY = KEYUP
+            switch ( v7.window.data2 )            // data2 = /**< event dependent data */
+            {
+              case SDLK_RIGHT:
+                if ( *(this + 359) )              // ~= *(this + N) = 0
+                  *(this + 359) = 0;
+                break;
+              case SDLK_LEFT:
+                if ( *(this + 358) )
+                  *(this + 358) = 0;
+                break;
+              case SDLK_DOWN:
+                if ( *(this + 357) )
+                  *(this + 357) = 0;
+                break;
+              case SDLK_UP:
+                if ( *(this + 356) )
+                  *(this + 356) = 0;
+                break;
+              default:
+                goto LABEL_40;
+            }
+
+  #+end_src
+  Подробное описание паттерна
+    case SDLK_RIGHT:
+    if ( *(this + 359) )              // ~= *(this + N) = 0
+        *(this + 359) = 0;
+#+begin_src C
+while (key <= key_0x301){
+   switch (key){
+     // ТУТ ЕСТЬ ЕЩЕ SWITCH но я не пойму разницу между v7.type и v7.window.data2
+       if (some_key) {
+         some_flag = 0
+        }
+       if (some_key) {
+         some_flag = 0
+        }
+       if (some_key) {
+         some_flag = 0
+        }
+       default {
+         goto next key if key else return result
+       }
+  }
+}
+#+end_src
+ Этот паттерн выльется в логику блока
 
 * objdump cheatsheet :objdump:
 -d - disasssemble
@@ -291,3 +347,435 @@ Import {
   Symbol: CommandLineToArgvW (8)
 }
 #+end_example
+
+* IDA
+G -> 004028cb
+G -> 0040227b -> google
+
+===
+Download SDL
+File -> Load -> Parce C header file -> SDL.h
+Y -> type
+M -> enum
+
+** Инфа по SDL2
+*** SDL_Event
+#+begin_src C
+typedef union SDL_Event
+{
+    Uint32 type;                            /**< Event type, shared with all events */
+    SDL_CommonEvent common;                 /**< Common event data */
+    SDL_DisplayEvent display;               /**< Display event data */
+    SDL_WindowEvent window;                 /**< Window event data */
+    SDL_KeyboardEvent key;                  /**< Keyboard event data */
+    SDL_TextEditingEvent edit;              /**< Text editing event data */
+    SDL_TextEditingExtEvent editExt;        /**< Extended text editing event data */
+    SDL_TextInputEvent text;                /**< Text input event data */
+    SDL_MouseMotionEvent motion;            /**< Mouse motion event data */
+    SDL_MouseButtonEvent button;            /**< Mouse button event data */
+    SDL_MouseWheelEvent wheel;              /**< Mouse wheel event data */
+    SDL_JoyAxisEvent jaxis;                 /**< Joystick axis event data */
+    SDL_JoyBallEvent jball;                 /**< Joystick ball event data */
+    SDL_JoyHatEvent jhat;                   /**< Joystick hat event data */
+    SDL_JoyButtonEvent jbutton;             /**< Joystick button event data */
+    SDL_JoyDeviceEvent jdevice;             /**< Joystick device change event data */
+    SDL_JoyBatteryEvent jbattery;           /**< Joystick battery event data */
+    SDL_ControllerAxisEvent caxis;          /**< Game Controller axis event data */
+    SDL_ControllerButtonEvent cbutton;      /**< Game Controller button event data */
+    SDL_ControllerDeviceEvent cdevice;      /**< Game Controller device event data */
+    SDL_ControllerTouchpadEvent ctouchpad;  /**< Game Controller touchpad event data */
+    SDL_ControllerSensorEvent csensor;      /**< Game Controller sensor event data */
+    SDL_AudioDeviceEvent adevice;           /**< Audio device event data */
+    SDL_SensorEvent sensor;                 /**< Sensor event data */
+    SDL_QuitEvent quit;                     /**< Quit request event data */
+    SDL_UserEvent user;                     /**< Custom event data */
+    SDL_SysWMEvent syswm;                   /**< System dependent window event data */
+    SDL_TouchFingerEvent tfinger;           /**< Touch finger event data */
+    SDL_MultiGestureEvent mgesture;         /**< Gesture event data */
+    SDL_DollarGestureEvent dgesture;        /**< Gesture event data */
+    SDL_DropEvent drop;                     /**< Drag and drop event data */
+
+    /* This is necessary for ABI compatibility between Visual C++ and GCC.
+       Visual C++ will respect the push pack pragma and use 52 bytes (size of
+       SDL_TextEditingEvent, the largest structure for 32-bit and 64-bit
+       architectures) for this union, and GCC will use the alignment of the
+       largest datatype within the union, which is 8 bytes on 64-bit
+       architectures.
+
+       So... we'll add padding to force the size to be 56 bytes for both.
+
+       On architectures where pointers are 16 bytes, this needs rounding up to
+       the next multiple of 16, 64, and on architectures where pointers are
+       even larger the size of SDL_UserEvent will dominate as being 3 pointers.
+    */
+    Uint8 padding[sizeof(void *) <= 8 ? 56 : sizeof(void *) == 16 ? 64 : 3 * sizeof(void *)];
+} SDL_Event;
+
+#+end_src
+
+*** SDL_EventType
+#+begin_src C
+typedef enum SDL_EventType
+{
+    SDL_FIRSTEVENT     = 0,     /**< Unused (do not remove) */
+
+    /* Application events */
+    SDL_QUIT           = 0x100, /**< User-requested quit */
+
+    /* These application events have special meaning on iOS, see README-ios.md for details */
+    SDL_APP_TERMINATING,        /**< The application is being terminated by the OS
+                                     Called on iOS in applicationWillTerminate()
+                                     Called on Android in onDestroy()
+                                */
+    SDL_APP_LOWMEMORY,          /**< The application is low on memory, free memory if possible.
+                                     Called on iOS in applicationDidReceiveMemoryWarning()
+                                     Called on Android in onLowMemory()
+                                */
+    SDL_APP_WILLENTERBACKGROUND, /**< The application is about to enter the background
+                                     Called on iOS in applicationWillResignActive()
+                                     Called on Android in onPause()
+                                */
+    SDL_APP_DIDENTERBACKGROUND, /**< The application did enter the background and may not get CPU for some time
+                                     Called on iOS in applicationDidEnterBackground()
+                                     Called on Android in onPause()
+                                */
+    SDL_APP_WILLENTERFOREGROUND, /**< The application is about to enter the foreground
+                                     Called on iOS in applicationWillEnterForeground()
+                                     Called on Android in onResume()
+                                */
+    SDL_APP_DIDENTERFOREGROUND, /**< The application is now interactive
+                                     Called on iOS in applicationDidBecomeActive()
+                                     Called on Android in onResume()
+                                */
+
+    SDL_LOCALECHANGED,  /**< The user's locale preferences have changed. */
+
+    /* Display events */
+    SDL_DISPLAYEVENT   = 0x150,  /**< Display state change */
+
+    /* Window events */
+    SDL_WINDOWEVENT    = 0x200, /**< Window state change */
+    SDL_SYSWMEVENT,             /**< System specific event */
+
+    /* Keyboard events */
+    SDL_KEYDOWN        = 0x300, /**< Key pressed */
+    SDL_KEYUP,                  /**< Key released */
+    SDL_TEXTEDITING,            /**< Keyboard text editing (composition) */
+    SDL_TEXTINPUT,              /**< Keyboard text input */
+    SDL_KEYMAPCHANGED,          /**< Keymap changed due to a system event such as an
+                                     input language or keyboard layout change.
+                                */
+    SDL_TEXTEDITING_EXT,       /**< Extended keyboard text editing (composition) */
+
+    /* Mouse events */
+    SDL_MOUSEMOTION    = 0x400, /**< Mouse moved */
+    SDL_MOUSEBUTTONDOWN,        /**< Mouse button pressed */
+    SDL_MOUSEBUTTONUP,          /**< Mouse button released */
+    SDL_MOUSEWHEEL,             /**< Mouse wheel motion */
+
+    /* Joystick events */
+    SDL_JOYAXISMOTION  = 0x600, /**< Joystick axis motion */
+    SDL_JOYBALLMOTION,          /**< Joystick trackball motion */
+    SDL_JOYHATMOTION,           /**< Joystick hat position change */
+    SDL_JOYBUTTONDOWN,          /**< Joystick button pressed */
+    SDL_JOYBUTTONUP,            /**< Joystick button released */
+    SDL_JOYDEVICEADDED,         /**< A new joystick has been inserted into the system */
+    SDL_JOYDEVICEREMOVED,       /**< An opened joystick has been removed */
+    SDL_JOYBATTERYUPDATED,      /**< Joystick battery level change */
+
+    /* Game controller events */
+    SDL_CONTROLLERAXISMOTION  = 0x650, /**< Game controller axis motion */
+    SDL_CONTROLLERBUTTONDOWN,          /**< Game controller button pressed */
+    SDL_CONTROLLERBUTTONUP,            /**< Game controller button released */
+    SDL_CONTROLLERDEVICEADDED,         /**< A new Game controller has been inserted into the system */
+    SDL_CONTROLLERDEVICEREMOVED,       /**< An opened Game controller has been removed */
+    SDL_CONTROLLERDEVICEREMAPPED,      /**< The controller mapping was updated */
+    SDL_CONTROLLERTOUCHPADDOWN,        /**< Game controller touchpad was touched */
+    SDL_CONTROLLERTOUCHPADMOTION,      /**< Game controller touchpad finger was moved */
+    SDL_CONTROLLERTOUCHPADUP,          /**< Game controller touchpad finger was lifted */
+    SDL_CONTROLLERSENSORUPDATE,        /**< Game controller sensor was updated */
+    SDL_CONTROLLERUPDATECOMPLETE_RESERVED_FOR_SDL3,
+    SDL_CONTROLLERSTEAMHANDLEUPDATED,  /**< Game controller Steam handle has changed */
+
+    /* Touch events */
+    SDL_FINGERDOWN      = 0x700,
+    SDL_FINGERUP,
+    SDL_FINGERMOTION,
+
+    /* Gesture events */
+    SDL_DOLLARGESTURE   = 0x800,
+    SDL_DOLLARRECORD,
+    SDL_MULTIGESTURE,
+
+    /* Clipboard events */
+    SDL_CLIPBOARDUPDATE = 0x900, /**< The clipboard or primary selection changed */
+
+    /* Drag and drop events */
+    SDL_DROPFILE        = 0x1000, /**< The system requests a file open */
+    SDL_DROPTEXT,                 /**< text/plain drag-and-drop event */
+    SDL_DROPBEGIN,                /**< A new set of drops is beginning (NULL filename) */
+    SDL_DROPCOMPLETE,             /**< Current set of drops is now complete (NULL filename) */
+
+    /* Audio hotplug events */
+    SDL_AUDIODEVICEADDED = 0x1100, /**< A new audio device is available */
+    SDL_AUDIODEVICEREMOVED,        /**< An audio device has been removed. */
+
+    /* Sensor events */
+    SDL_SENSORUPDATE = 0x1200,     /**< A sensor was updated */
+
+    /* Render events */
+    SDL_RENDER_TARGETS_RESET = 0x2000, /**< The render targets have been reset and their contents need to be updated */
+    SDL_RENDER_DEVICE_RESET, /**< The device has been reset and all textures need to be recreated */
+
+    /* Internal events */
+    SDL_POLLSENTINEL = 0x7F00, /**< Signals the end of an event poll cycle */
+
+    /** Events SDL_USEREVENT through SDL_LASTEVENT are for your use,
+     *  and should be allocated with SDL_RegisterEvents()
+     */
+    SDL_USEREVENT    = 0x8000,
+
+    /**
+     *  This last event is only for bounding internal arrays
+     */
+    SDL_LASTEVENT    = 0xFFFF
+} SDL_EventType;
+
+#+end_src
+
+*** SDL_WindowEvent
+#+begin_src C
+typedef struct SDL_WindowEvent
+{
+    Uint32 type;        /**< SDL_WINDOWEVENT */
+    Uint32 timestamp;   /**< In milliseconds, populated using SDL_GetTicks() */
+    Uint32 windowID;    /**< The associated window */
+    Uint8 event;        /**< SDL_WindowEventID */
+    Uint8 padding1;
+    Uint8 padding2;
+    Uint8 padding3;
+    Sint32 data1;       /**< event dependent data */
+    Sint32 data2;       /**< event dependent data */
+} SDL_WindowEvent;
+
+#+end_src
+
+** Псевдокомментарии
+#+begin_src C
+SDL_KEYUP,                  /**< Key released */
+#+end_src
+
+По __thiscall понимаем что это метод C++ класса
+В теле много обращений по смещениям относительно this которые приводятся к разным типам
+Вероятно ход от this по смещениям чтобы собрать структуру
+
+- _фан факт_1_: объект имеющий структуру лежит в куче, в this хранится адрес начала объекта в памяти
+смещения от начала объекта к полям фиксированы для типа объекта а не для экземпляра
+*(this + N) ~ (this->field) и N не изменяется для всех экземпляров
+
+- получается в функции есть локальная переменная v7 типа SDL_Event, SDL_PollEvent берет событие по адресу &v7 и начинается цикл while который работает пока есть события подходящего типа (type <= SDL_KEYUP) и проходит итерации свитчей которые запускают обработки
+
+# 72;9M
+- _фан факт_2_: есть два участка кода которые обращаются по смещению +344 от this и пишут туда объекты разных типов
+ Подозреваю что в случае с WORD ему все равно на старший 345=1 и он просто хотел записать 0 в 344, но я не понял зачем так делать
+#+begin_src C
+{
+                v3 = this + 248;
+                v4 = *((_DWORD *)this + 66) - 1;
+                *((_DWORD *)this + 66) = v4;
+                if ( *((_DWORD *)this + 67) >= 0x10u )
+                v3 = *(char **)v3;
+                v3[v4] = 0;
+LABEL_39:
+                *(this + 344) = 1;
+            }
+            }
+
+#+end_src
+#+begin_src asm
+.text:00401EC4                 mov     word ptr [esi+158h], 100h // esi+158h ~~ this+344
+#+end_src#+begin_src C
+if ( v7.window.data2 != SDLK_BACKSPACE )
+            {
+            if ( v7.window.data2 == 13 )
+                *((_WORD *)this + 172) = 256;   // WORD = 2b = +344b и в 334 пойдет 0 а в старший 345 пойдет 1?
+            break;
+            }
+
+#+end_src
+
+- Смотрим следующие блоки
+  #+begin_src C
+  if ( *((_DWORD *)this + 66) ) // условие на 4 байтный объект по смещению 66*4=264 от this != 0
+  {
+      v3 = this + 248;
+      v4 = *((_DWORD *)this + 66) - 1;
+      *((_DWORD *)this + 66) = v4;
+      if ( *((_DWORD *)this + 67) >= 0x10u )
+          v3 = (_DWORD *)*v3;
+      *((_BYTE *)v3 + v4) = 0;
+  LABEL_39:
+      *(this + 344) = 1;
+  }
+  #+end_src
+
+
+- Составляем структуру
+#+begin_src C
+struct MagBallGameState {
+    bool is_alive;       // offset 0
+    char gap1[355];
+    bool key_up;          // offset 356  (SDLK_UP)
+    bool key_down;        // offset 357  (SDLK_DOWN)
+    bool key_left;         // offset 358  (SDLK_LEFT)
+    bool key_right;        // offset 359  (SDLK_RIGHT)
+};
+#+end_src
+[[http://wiki.libsdl.org/SDL2/SDL_Event][SDL_Event Doc]]
+
+SDL_events.h:
+    #+begin_src C
+    /* Keyboard events */
+        SDL_KEYDOWN        = 0x300, /**< Key pressed */
+        SDL_KEYUP,                  /**< Key released */
+        SDL_TEXTEDITING,            /**< Keyboard text editing (composition) */
+        SDL_TEXTINPUT,              /**< Keyboard text input */
+        SDL_KEYMAPCHANGED,          /**< Keymap changed due to a system event such as an
+
+    /* Application events */
+        SDL_QUIT           = 0x100, /**< User-requested quit */
+    #+end_src
+
+    Есть вот такой кейс
+
+    #+begin_src C
+    case 0x100u: // SDL_QUIT
+            *this = 0;
+            break;
+    #+end_src
+*this = первый байт структуры
+Получается первый элемент структуры это что-то типо флага 0~QUIT
+
+View → Open Subviews → Local types (shift+f1)
+Add type - и получаем
+
+
+
+#+begin_src ERROR
+67:9 warning '_M_IX86' macro redefined
+433:9 warning previous definition is here
+1:26 error expected unqualified-id
+#+end_src
+** Псевдокод
+
+~raw
+,#+begin_src C
+int __thiscall sub_401E50(char *this)
+{
+  int result; // eax
+  _DWORD *v3; // eax
+  int v4; // ecx
+  _DWORD *v5; // edi
+  unsigned int v6; // edx
+  SDL_Event v7; // [esp+8h] [ebp-3Ch] BYREF
+
+  result = SDL_PollEvent(&v7);
+  if ( result )
+  {
+    while ( v7.type <= 0x301 ) // M -> choose SDL ENUM => SDL_KEYUP
+    {
+      switch ( v7.type )
+      {
+        case 0x301u:  // SDL_KEYUP enum
+          switch ( v7.window.data2 )
+          {
+            case 0x4000004F:
+              if ( *(this + 359) )
+                *(this + 359) = 0;
+              break;
+            case 0x40000050:
+              if ( *(this + 358) )
+                *(this + 358) = 0;
+              break;
+            case 0x40000051:
+              if ( *(this + 357) )
+                *(this + 357) = 0;
+              break;
+            case 0x40000052:
+              if ( *(this + 356) )
+                *(this + 356) = 0;
+              break;
+            default:
+              goto LABEL_40;
+          }
+          break;
+        case 0x100u: // SDL_QUIT
+          *this = 0;
+          break;
+        case 0x300u: // SDL_KEYDOWN
+          if ( v7.window.data2 > 1073741903 )
+          {
+            switch ( v7.window.data2 )
+            {
+              case 0x40000050:
+                *(this + 358) = 1;
+                break;
+              case 0x40000051:
+                *(this + 357) = 1;
+                break;
+              case 0x40000052:
+                *(this + 356) = 1;
+                break;
+            }
+            break;
+          }
+          if ( v7.window.data2 == 1073741903 )
+          {
+            *(this + 359) = 1;
+          }
+          else
+          {
+            if ( v7.window.data2 != 8 )
+            {
+              if ( v7.window.data2 == 13 )
+                *((_WORD *)this + 172) = 256;
+              break;
+            }
+            if ( *((_DWORD *)this + 66) )
+            {
+              v3 = this + 248;
+              v4 = *((_DWORD *)this + 66) - 1;
+              *((_DWORD *)this + 66) = v4;
+              if ( *((_DWORD *)this + 67) >= 0x10u )
+                v3 = (_DWORD *)*v3;
+              *((_BYTE *)v3 + v4) = 0;
+LABEL_39:
+              *(this + 344) = 1;
+            }
+          }
+          break;
+      }
+LABEL_40:
+      result = SDL_PollEvent(&v7);
+      if ( !result )
+        return result;
+    }
+    if ( v7.type != 771 || v7.display.padding1 )
+      goto LABEL_40;
+    v5 = this + 248;
+    sub_401780(this + 248, &v7.jaxis.axis, strlen(v7.edit.text));
+    if ( *((_DWORD *)this + 66) > 0x4Bu )
+    {
+      v6 = *((_DWORD *)this + 66);
+      if ( v6 < 0x4B )
+        sub_401710();
+      if ( *((_DWORD *)this + 67) >= 0x10u )
+        v5 = (_DWORD *)*v5;
+      *((_DWORD *)this + 66) = 75;
+      memmove((char *)v5 + 75, (char *)v5 + v6, 1u);
+    }
+    goto LABEL_39;
+  }
+  return result;
+}
+#+end_src

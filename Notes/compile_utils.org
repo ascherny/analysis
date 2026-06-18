@@ -46,13 +46,13 @@ icmp	Сравнение целых чисел
 Базовая схема:
     C source
     ↓
-    Clang Frontend
+    Clang Frontend / Препроц
     ↓
-    LLVM IR
+    LLVM IR  / Платформонезависимо
     ↓
     LLVM x86-64 Backend
     ↓
-    ELF relocatable object (.o)
+    ELF relocatable object (.o) / ASM
 *** Тесты препроцессора
 test.c
 #+begin_src c
@@ -1752,6 +1752,63 @@ attributes #1 = { "frame-pointer"="non-leaf-no-reserve" "no-trapping-math"="true
 !5 = !{!"Homebrew clang version 22.1.6"}
 #+end_src
 
+*** Тесты backend
+
+#+begin_src  shell :results output code :dir ../CEd/Practice
+cat test.c
+#+end_src
+
+#+RESULTS:
+#+begin_src shell
+#define HELLO "World"
+#define ADD(a,b) ((a)+(b))
+
+int main() {
+    return ADD(2, 3);
+}
+#+end_src
+
+#+begin_src  shell :results output code :dir ../CEd/Practice
+llvm-clang -target x86_64-unknown-linux-gpu -S test.c -o test.s
+cat test.s
+#+end_src
+
+#+RESULTS:
+#+begin_src shell
+	.file	"test.c"
+	.text
+	.globl	main                            # -- Begin function main
+	.p2align	4
+	.type	main,@function
+main:                                   # @main
+	.cfi_startproc
+# %bb.0:
+	pushq	%rbp
+	.cfi_def_cfa_offset 16
+	.cfi_offset %rbp, -16
+	movq	%rsp, %rbp
+	.cfi_def_cfa_register %rbp
+	movl	$0, -4(%rbp)
+	movl	$5, %eax
+	popq	%rbp
+	.cfi_def_cfa %rsp, 8
+	retq
+.Lfunc_end0:
+	.size	main, .Lfunc_end0-main
+	.cfi_endproc
+                                        # -- End function
+	.ident	"Homebrew clang version 22.1.6"
+	.section	".note.GNU-stack","",@progbits
+	.addrsig
+#+end_src
+
+CFI = Call Frame Information
+
+
+*** Note
+Дальше этого на mac я не уйду без libc / CRT
+libc для библиотек
+CRT - c runtime который получает управление после ядра, берет аргументы, инициализирует libc
 
 ** readelf
 #+begin_src bash
@@ -1781,3 +1838,4 @@ ELF Header:
 
 * Question
 Есть ли разница между llvm, gnu, clang binutils?
+Что такое DWARF/unwinder

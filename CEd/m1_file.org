@@ -242,6 +242,12 @@ IAT (Import Address Table), не стоит путать с таблицей и�
 - ???
 
 ** Анализ по системным и библиотечным вызовам :reverse:libs:
+Алгоритм:
+- ELF
+- MachO
+- PE
+
+
 #+begin_src C
 #include "stdio.h"
 
