@@ -97,6 +97,9 @@ babel-shell llvm-nm signature/Magic8Ball.exe
 : signature/Magic8Ball.exe: no symbols
 
 * Дизасм
+:PROPERTIES:
+:ID:       b15ed8f9-edac-449d-84b4-389d10fb4552
+:END:
 #+begin_src shell :dir . :results output
 babel-shell llvm-objdump -d signature/Magic8Ball.exe | grep "4028cb"
 #+end_src
@@ -347,7 +350,43 @@ Import {
 }
 #+end_example
 
+
 * IDA :ida:reverse:
+:PROPERTIES:
+:ID:       28cc51e9-cdf1-4e42-bbc0-bf9abe1a9dfd
+:END:
+Алгоритм: что делать когда видишь подозрение на библиотечную функцию
+
+1. Распознай признак
+Смотришь на вызов и видишь имя начинающееся с SDL_, TTF_, IMG_, или просто незнакомое имя функции из системной библиотеки.
+#+begin_src C
+TextureFromSurface = SDL_CreateTextureFromSurface(renderer, surface);
+#+end_src
+2. Проверь - это уже подгруженная сигнатура, или sub_XXXXXX?
+Если функция называется человеческим именем (SDL_CreateTextureFromSurface) - IDA уже её узнала, сигнатура подгружена. Переходи к шагу 4.
+Если видишь sub_401234 рядом с вызовами SDL-объектов - возможно это библиотечная функция, которую IDA не распознала по имени.
+
+3. (Если sub_XXXXXX) Найди сигнатуру вручную
+Погугли: <имя похожей функции> signature или посмотри на параметры (сколько их, какие типы) и поищи в SDL2 docs функцию с похожей сигнатурой
+Или: правый клик на функции → Set function type → если знаешь сигнатуру, впиши её руками
+
+4. Прочитай сигнатуру - не лезь внутрь
+Наведи курсор на функцию или глянь в SDL2 wiki:
+#+begin_src C
+SDL_Texture* SDL_CreateTextureFromSurface(SDL_Renderer* renderer, SDL_Surface* surface);
+#+end_src
+Теперь ты знаешь: принимает рендерер и поверхность, возвращает текстуру. Этого достаточно - не открывай саму функцию, она внутри SDL.dll/.so, реверсить её бессмысленно.
+5. Используй сигнатуру чтобы понять контекст вызова
+#+begin_src C
+TextureFromSurface = SDL_CreateTextureFromSurface(*(SDL_Renderer **)(this + 8), result);
+#+end_src
+Раз первый параметр - SDL_Renderer*, значит *(this+8) это рендерер. Сразу понятен смысл смещения +8 в твоей структуре - это поле renderer.
+6. Сразу применяй открытие к структуре
+Иди в Local Types, добавляй:
+#+begin_src C
+SDL_Renderer* renderer;  // offset 8
+#+end_src
+
 G -> 004028cb
 G -> 0040227b -> google
 

@@ -242,6 +242,67 @@ IAT (Import Address Table), не стоит путать с таблицей и�
 - ???
 
 ** Анализ по системным и библиотечным вызовам :reverse:libs:
+**** Советы свыше
+Во время анализа произвольного исполняемого файла при помощи Ghidra вы видите следующую картину в окне Functions либо Symbols:
+
+Необходимо выяснить, что за интерфейс у функции SDL_PollEvent и добавить его в список типов у проекта.
+
+Шаг 1.
+Буквально гуглим, что за функции перед нами:
+
+Шаг 2.
+Видим, что это библиотека SDL2. Гуглим более таргетно нашу функцию, и открываем документацию:
+
+Шаг 3.
+Сигнатуру мы нашли, но единственный аргумент имеет ещё один кастомный тип данных. Ищем в той же документации эту структуру:
+
+
+Шаг 4.
+Добавить эту структуру данных руками будет затруднительно, поэтому берём файл с описанием этой структуры с GitHub и импортируем его в интерфейсе Ghidra:
+
+File > Parse C Source > Add files to parse.
+
+
+Примечание: Чтобы не получать ошибки вида "Error: Undefined data type "Uint32" загрузите ещё файл SDL_stdinc.h. Либо скачайте весь проект и добавьте include в path проекта.
+
+В итоге мы получим в окне Data Types нужный нам тип:
+
+
+Во время анализа произвольного исполняемого файла при помощи Ghidra вы видите следующую картину в окне Functions либо Symbols:
+
+Необходимо выяснить, что за интерфейс у функции SDL_PollEvent и добавить его в список типов у проекта.
+
+Шаг 1.
+Буквально гуглим, что за функции перед нами:
+
+
+Шаг 2.
+Видим, что это библиотека SDL2. Гуглим более таргетно нашу функцию, и открываем документацию:
+
+
+Шаг 3.
+Сигнатуру мы нашли, но единственный аргумент имеет ещё один кастомный тип данных. Ищем в той же документации эту структуру:
+
+
+Шаг 4.
+Добавить эту структуру данных руками будет затруднительно, поэтому берём файл с описанием этой структуры с GitHub и импортируем его в интерфейсе Ghidra:
+
+File > Parse C Source > Add files to parse.
+
+
+Примечание: Чтобы не получать ошибки вида "Error: Undefined data type "Uint32" загрузите ещё файл SDL_stdinc.h. Либо скачайте весь проект и добавьте include в path проекта.
+
+В итоге мы получим в окне Data Types нужный нам тип:
+
+Описание результата
+Теперь мы можем поправить сигнатуру функции SDL_PollEvent, что упростит дальнейший анализ кода.
+
+Описание результата
+Теперь мы можем поправить сигнатуру функции SDL_PollEvent, что упростит дальнейший анализ кода.
+
+
+**** Заметки
+
 Алгоритм:
 - ELF
 - MachO
@@ -261,15 +322,62 @@ int main(int argc, char** argv)
 #+RESULTS:
 : Hello world
 
+
 *** ELF
+**** READELF :readelf:
+***** readelf_headers
 Читаем ELF Header и смотрим PT_INTERP где будет указан dynamic loader
 readelf -l *target*
 
-#+begin_src shell :dir . :result output
-babel-shell readelf -l Practice/hello_world
+#+begin_src shell :dir . :results output
+/opt/homebrew/opt/binutils/bin/greadelf -l Practice/hello_worlds/hello_world_ELF_ARM
 #+end_src
 
 #+RESULTS:
+#+begin_example
+
+Elf file type is DYN (Position-Independent Executable file)
+Entry point 0x680
+There are 10 program headers, starting at offset 64
+
+Program Headers:
+  Type           Offset             VirtAddr           PhysAddr
+                 FileSiz            MemSiz              Flags  Align
+  PHDR           0x0000000000000040 0x0000000000000040 0x0000000000000040
+                 0x0000000000000230 0x0000000000000230  R      0x8
+  INTERP         0x0000000000000294 0x0000000000000294 0x0000000000000294
+                 0x000000000000001b 0x000000000000001b  R      0x1
+      [Requesting program interpreter: /lib/ld-linux-aarch64.so.1]
+  LOAD           0x0000000000000000 0x0000000000000000 0x0000000000000000
+                 0x00000000000009a8 0x00000000000009a8  R E    0x10000
+  LOAD           0x000000000000fdc8 0x000000000001fdc8 0x000000000001fdc8
+                 0x0000000000000270 0x0000000000000278  RW     0x10000
+  DYNAMIC        0x000000000000fdd8 0x000000000001fdd8 0x000000000001fdd8
+                 0x00000000000001e0 0x00000000000001e0  RW     0x8
+  NOTE           0x0000000000000270 0x0000000000000270 0x0000000000000270
+                 0x0000000000000024 0x0000000000000024  R      0x4
+  NOTE           0x0000000000000918 0x0000000000000918 0x0000000000000918
+                 0x0000000000000090 0x0000000000000090  R      0x4
+  GNU_EH_FRAME   0x000000000000080c 0x000000000000080c 0x000000000000080c
+                 0x000000000000003c 0x000000000000003c  R      0x4
+  GNU_STACK      0x0000000000000000 0x0000000000000000 0x0000000000000000
+                 0x0000000000000000 0x0000000000000000  RW     0x10
+  GNU_RELRO      0x000000000000fdc8 0x000000000001fdc8 0x000000000001fdc8
+                 0x0000000000000238 0x0000000000000238  R      0x1
+
+ Section to Segment mapping:
+  Segment Sections...
+   00
+   01     .interp
+   02     .note.gnu.build-id .interp .gnu.hash .dynsym .dynstr .gnu.version .gnu.version_r .rela.dyn .rela.plt .init .plt .text .fini .rodata .eh_frame_hdr .eh_frame .note.ABI-tag .note.package
+   03     .init_array .fini_array .dynamic .got .got.plt .data .bss
+   04     .dynamic
+   05     .note.gnu.build-id
+   06     .note.ABI-tag .note.package
+   07     .eh_frame_hdr
+   08
+   09     .init_array .fini_array .dynamic .got
+#+end_example
 
 Общая схема
 В память грузится libc и становится первым userspace кодом
@@ -282,6 +390,249 @@ babel-shell readelf -l Practice/hello_world
   - read DT_NEEDED
   - load .so
   - resolve
+
+***** readelf_imports
+#+begin_src shell :dir . :results output
+/opt/homebrew/opt/binutils/bin/greadelf -Ws Practice/hello_worlds/hello_world_ELF_ARM
+#+end_src
+
+#+RESULTS:
+#+begin_example
+
+Symbol table '.dynsym' contains 10 entries:
+   Num:    Value          Size Type    Bind   Vis      Ndx Name
+     0: 0000000000000000     0 NOTYPE  LOCAL  DEFAULT  UND
+     1: 00000000000005d0     0 SECTION LOCAL  DEFAULT   10 .init
+     2: 0000000000020028     0 SECTION LOCAL  DEFAULT   24 .data
+     3: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND __libc_start_main@GLIBC_2.34 (2)
+     4: 0000000000000000     0 NOTYPE  WEAK   DEFAULT  UND _ITM_deregisterTMCloneTable
+     5: 0000000000000000     0 FUNC    WEAK   DEFAULT  UND __cxa_finalize@GLIBC_2.17 (3)
+     6: 0000000000000000     0 NOTYPE  WEAK   DEFAULT  UND __gmon_start__
+     7: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND abort@GLIBC_2.17 (3)
+     8: 0000000000000000     0 NOTYPE  WEAK   DEFAULT  UND _ITM_registerTMCloneTable
+     9: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND printf@GLIBC_2.17 (3)
+
+Symbol table '.symtab' contains 91 entries:
+   Num:    Value          Size Type    Bind   Vis      Ndx Name
+     0: 0000000000000000     0 NOTYPE  LOCAL  DEFAULT  UND
+     1: 0000000000000270     0 SECTION LOCAL  DEFAULT    1 .note.gnu.build-id
+     2: 0000000000000294     0 SECTION LOCAL  DEFAULT    2 .interp
+     3: 00000000000002b0     0 SECTION LOCAL  DEFAULT    3 .gnu.hash
+     4: 00000000000002d0     0 SECTION LOCAL  DEFAULT    4 .dynsym
+     5: 00000000000003c0     0 SECTION LOCAL  DEFAULT    5 .dynstr
+     6: 0000000000000454     0 SECTION LOCAL  DEFAULT    6 .gnu.version
+     7: 0000000000000468     0 SECTION LOCAL  DEFAULT    7 .gnu.version_r
+     8: 0000000000000498     0 SECTION LOCAL  DEFAULT    8 .rela.dyn
+     9: 0000000000000558     0 SECTION LOCAL  DEFAULT    9 .rela.plt
+    10: 00000000000005d0     0 SECTION LOCAL  DEFAULT   10 .init
+    11: 00000000000005f0     0 SECTION LOCAL  DEFAULT   11 .plt
+    12: 0000000000000680     0 SECTION LOCAL  DEFAULT   12 .text
+    13: 00000000000007e4     0 SECTION LOCAL  DEFAULT   13 .fini
+    14: 00000000000007fc     0 SECTION LOCAL  DEFAULT   14 .rodata
+    15: 000000000000080c     0 SECTION LOCAL  DEFAULT   15 .eh_frame_hdr
+    16: 0000000000000848     0 SECTION LOCAL  DEFAULT   16 .eh_frame
+    17: 0000000000000918     0 SECTION LOCAL  DEFAULT   17 .note.ABI-tag
+    18: 0000000000000938     0 SECTION LOCAL  DEFAULT   18 .note.package
+    19: 000000000001fdc8     0 SECTION LOCAL  DEFAULT   19 .init_array
+    20: 000000000001fdd0     0 SECTION LOCAL  DEFAULT   20 .fini_array
+    21: 000000000001fdd8     0 SECTION LOCAL  DEFAULT   21 .dynamic
+    22: 000000000001ffb8     0 SECTION LOCAL  DEFAULT   22 .got
+    23: 000000000001ffe8     0 SECTION LOCAL  DEFAULT   23 .got.plt
+    24: 0000000000020028     0 SECTION LOCAL  DEFAULT   24 .data
+    25: 0000000000020038     0 SECTION LOCAL  DEFAULT   25 .bss
+    26: 0000000000000000     0 SECTION LOCAL  DEFAULT   26 .comment
+    27: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS Scrt1.o
+    28: 0000000000000680     0 NOTYPE  LOCAL  DEFAULT   12 $x
+    29: 000000000000085c     0 NOTYPE  LOCAL  DEFAULT   16 $d
+    30: 0000000000000918     0 NOTYPE  LOCAL  DEFAULT   17 $d
+    31: 0000000000000918    32 OBJECT  LOCAL  DEFAULT   17 __abi_tag
+    32: 00000000000007fc     0 NOTYPE  LOCAL  DEFAULT   14 $d
+    33: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS crti.o
+    34: 00000000000006b4     0 NOTYPE  LOCAL  DEFAULT   12 $x
+    35: 00000000000006b4    20 FUNC    LOCAL  DEFAULT   12 call_weak_fn
+    36: 00000000000005d0     0 NOTYPE  LOCAL  DEFAULT   10 $x
+    37: 00000000000007e4     0 NOTYPE  LOCAL  DEFAULT   13 $x
+    38: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS crtn.o
+    39: 00000000000005e0     0 NOTYPE  LOCAL  DEFAULT   10 $x
+    40: 00000000000007f0     0 NOTYPE  LOCAL  DEFAULT   13 $x
+    41: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS crtstuff.c
+    42: 00000000000006e0     0 NOTYPE  LOCAL  DEFAULT   12 $x
+    43: 00000000000006e0     0 FUNC    LOCAL  DEFAULT   12 deregister_tm_clones
+    44: 0000000000000710     0 FUNC    LOCAL  DEFAULT   12 register_tm_clones
+    45: 0000000000020030     0 NOTYPE  LOCAL  DEFAULT   24 $d
+    46: 000000000000074c     0 FUNC    LOCAL  DEFAULT   12 __do_global_dtors_aux
+    47: 0000000000020038     1 OBJECT  LOCAL  DEFAULT   25 completed.0
+    48: 000000000001fdd0     0 NOTYPE  LOCAL  DEFAULT   20 $d
+    49: 000000000001fdd0     0 OBJECT  LOCAL  DEFAULT   20 __do_global_dtors_aux_fini_array_entry
+    50: 00000000000007a0     0 FUNC    LOCAL  DEFAULT   12 frame_dummy
+    51: 000000000001fdc8     0 NOTYPE  LOCAL  DEFAULT   19 $d
+    52: 000000000001fdc8     0 OBJECT  LOCAL  DEFAULT   19 __frame_dummy_init_array_entry
+    53: 0000000000000870     0 NOTYPE  LOCAL  DEFAULT   16 $d
+    54: 0000000000020038     0 NOTYPE  LOCAL  DEFAULT   25 $d
+    55: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS hello_world.c
+    56: 00000000000007a8     0 NOTYPE  LOCAL  DEFAULT   12 $x
+    57: 0000000000000800     0 NOTYPE  LOCAL  DEFAULT   14 $d
+    58: 000000000000004b     0 NOTYPE  LOCAL  DEFAULT   26 $d
+    59: 00000000000008d8     0 NOTYPE  LOCAL  DEFAULT   16 $d
+    60: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS crtstuff.c
+    61: 0000000000000914     0 NOTYPE  LOCAL  DEFAULT   16 $d
+    62: 0000000000000914     0 OBJECT  LOCAL  DEFAULT   16 __FRAME_END__
+    63: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS
+    64: 000000000001fdd8     0 OBJECT  LOCAL  DEFAULT  ABS _DYNAMIC
+    65: 000000000000080c     0 NOTYPE  LOCAL  DEFAULT   15 __GNU_EH_FRAME_HDR
+    66: 000000000001ffb8     0 OBJECT  LOCAL  DEFAULT  ABS _GLOBAL_OFFSET_TABLE_
+    67: 00000000000005f0     0 NOTYPE  LOCAL  DEFAULT   11 $x
+    68: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND __libc_start_main@GLIBC_2.34
+    69: 0000000000000000     0 NOTYPE  WEAK   DEFAULT  UND _ITM_deregisterTMCloneTable
+    70: 0000000000020028     0 NOTYPE  WEAK   DEFAULT   24 data_start
+    71: 0000000000020038     0 NOTYPE  GLOBAL DEFAULT   25 __bss_start__
+    72: 0000000000000000     0 FUNC    WEAK   DEFAULT  UND __cxa_finalize@GLIBC_2.17
+    73: 0000000000020040     0 NOTYPE  GLOBAL DEFAULT   25 _bss_end__
+    74: 0000000000020038     0 NOTYPE  GLOBAL DEFAULT   24 _edata
+    75: 00000000000007e4     0 FUNC    GLOBAL HIDDEN    13 _fini
+    76: 0000000000020040     0 NOTYPE  GLOBAL DEFAULT   25 __bss_end__
+    77: 0000000000020028     0 NOTYPE  GLOBAL DEFAULT   24 __data_start
+    78: 0000000000000000     0 NOTYPE  WEAK   DEFAULT  UND __gmon_start__
+    79: 0000000000020030     0 OBJECT  GLOBAL HIDDEN    24 __dso_handle
+    80: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND abort@GLIBC_2.17
+    81: 00000000000007fc     4 OBJECT  GLOBAL DEFAULT   14 _IO_stdin_used
+    82: 0000000000020040     0 NOTYPE  GLOBAL DEFAULT   25 _end
+    83: 0000000000000680    52 FUNC    GLOBAL DEFAULT   12 _start
+    84: 0000000000020040     0 NOTYPE  GLOBAL DEFAULT   25 __end__
+    85: 0000000000020038     0 NOTYPE  GLOBAL DEFAULT   25 __bss_start
+    86: 00000000000007a8    60 FUNC    GLOBAL DEFAULT   12 main
+    87: 0000000000020038     0 OBJECT  GLOBAL HIDDEN    24 __TMC_END__
+    88: 0000000000000000     0 NOTYPE  WEAK   DEFAULT  UND _ITM_registerTMCloneTable
+    89: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND printf@GLIBC_2.17
+    90: 00000000000005d0     0 FUNC    GLOBAL HIDDEN    10 _init
+#+end_example
+
+
+**** OBJDUMP :objdump:
+***** objdump_headers
+#+begin_src shell :dir . :results output
+/opt/homebrew/opt/binutils/bin/gobjdump -f  Practice/hello_worlds/hello_world_ELF_x86
+#+end_src
+
+#+RESULTS:
+:
+: Practice/hello_worlds/hello_world_ELF_x86:     file format elf64-x86-64
+: architecture: i386:x86-64, flags 0x00000150:
+: HAS_SYMS, DYNAMIC, D_PAGED
+: start address 0x0000000000001060
+:
+
+#+begin_src shell :dir . :results output
+/opt/homebrew/opt/binutils/bin/gobjdump -h  Practice/hello_worlds/hello_world_ELF_x86
+#+end_src
+
+#+RESULTS:
+#+begin_example
+
+Practice/hello_worlds/hello_world_ELF_x86:     file format elf64-x86-64
+
+Sections:
+Idx Name          Size      VMA               LMA               File off  Algn
+  0 .note.gnu.property 00000030  0000000000000350  0000000000000350  00000350  2**3
+                  CONTENTS, ALLOC, LOAD, READONLY, DATA
+  1 .note.gnu.build-id 00000024  0000000000000380  0000000000000380  00000380  2**2
+                  CONTENTS, ALLOC, LOAD, READONLY, DATA
+  2 .interp       0000001c  00000000000003a4  00000000000003a4  000003a4  2**0
+                  CONTENTS, ALLOC, LOAD, READONLY, DATA
+  3 .gnu.hash     00000024  00000000000003c0  00000000000003c0  000003c0  2**3
+                  CONTENTS, ALLOC, LOAD, READONLY, DATA
+  4 .dynsym       000000a8  00000000000003e8  00000000000003e8  000003e8  2**3
+                  CONTENTS, ALLOC, LOAD, READONLY, DATA
+  5 .dynstr       0000008f  0000000000000490  0000000000000490  00000490  2**0
+                  CONTENTS, ALLOC, LOAD, READONLY, DATA
+  6 .gnu.version  0000000e  0000000000000520  0000000000000520  00000520  2**1
+                  CONTENTS, ALLOC, LOAD, READONLY, DATA
+  7 .gnu.version_r 00000030  0000000000000530  0000000000000530  00000530  2**3
+                  CONTENTS, ALLOC, LOAD, READONLY, DATA
+  8 .rela.dyn     000000c0  0000000000000560  0000000000000560  00000560  2**3
+                  CONTENTS, ALLOC, LOAD, READONLY, DATA
+  9 .rela.plt     00000018  0000000000000620  0000000000000620  00000620  2**3
+                  CONTENTS, ALLOC, LOAD, READONLY, DATA
+ 10 .init         0000001b  0000000000001000  0000000000001000  00001000  2**2
+                  CONTENTS, ALLOC, LOAD, READONLY, CODE
+ 11 .plt          00000020  0000000000001020  0000000000001020  00001020  2**4
+                  CONTENTS, ALLOC, LOAD, READONLY, CODE
+ 12 .plt.got      00000010  0000000000001040  0000000000001040  00001040  2**4
+                  CONTENTS, ALLOC, LOAD, READONLY, CODE
+ 13 .plt.sec      00000010  0000000000001050  0000000000001050  00001050  2**4
+                  CONTENTS, ALLOC, LOAD, READONLY, CODE
+ 14 .text         00000117  0000000000001060  0000000000001060  00001060  2**4
+                  CONTENTS, ALLOC, LOAD, READONLY, CODE
+ 15 .fini         0000000d  0000000000001178  0000000000001178  00001178  2**2
+                  CONTENTS, ALLOC, LOAD, READONLY, CODE
+ 16 .rodata       00000010  0000000000002000  0000000000002000  00002000  2**2
+                  CONTENTS, ALLOC, LOAD, READONLY, DATA
+ 17 .eh_frame_hdr 00000034  0000000000002010  0000000000002010  00002010  2**2
+                  CONTENTS, ALLOC, LOAD, READONLY, DATA
+ 18 .eh_frame     000000ac  0000000000002048  0000000000002048  00002048  2**3
+                  CONTENTS, ALLOC, LOAD, READONLY, DATA
+ 19 .note.ABI-tag 00000020  00000000000020f4  00000000000020f4  000020f4  2**2
+                  CONTENTS, ALLOC, LOAD, READONLY, DATA
+ 20 .note.package 00000078  0000000000002114  0000000000002114  00002114  2**2
+                  CONTENTS, ALLOC, LOAD, READONLY, DATA
+ 21 .init_array   00000008  0000000000003db8  0000000000003db8  00002db8  2**3
+                  CONTENTS, ALLOC, LOAD, DATA
+ 22 .fini_array   00000008  0000000000003dc0  0000000000003dc0  00002dc0  2**3
+                  CONTENTS, ALLOC, LOAD, DATA
+ 23 .dynamic      000001f0  0000000000003dc8  0000000000003dc8  00002dc8  2**3
+                  CONTENTS, ALLOC, LOAD, DATA
+ 24 .got          00000048  0000000000003fb8  0000000000003fb8  00002fb8  2**3
+                  CONTENTS, ALLOC, LOAD, DATA
+ 25 .data         00000010  0000000000004000  0000000000004000  00003000  2**3
+                  CONTENTS, ALLOC, LOAD, DATA
+ 26 .bss          00000008  0000000000004010  0000000000004010  00003010  2**0
+                  ALLOC
+ 27 .comment      00000025  0000000000000000  0000000000000000  00003010  2**0
+                  CONTENTS, READONLY
+#+end_example
+
+***** objdump_imports
+- GCC
+
+#+begin_src shell :dir . :results output
+/opt/homebrew/opt/binutils/bin/gobjdump -T  Practice/hello_worlds/hello_world_ELF_x86
+#+end_src
+
+#+RESULTS:
+#+begin_example
+
+Practice/hello_worlds/hello_world_ELF_x86:     file format elf64-x86-64
+
+DYNAMIC SYMBOL TABLE:
+0000000000000000      DF *UND*	0000000000000000 (GLIBC_2.34) __libc_start_main
+0000000000000000  w   D  *UND*	0000000000000000  Base        _ITM_deregisterTMCloneTable
+0000000000000000      DF *UND*	0000000000000000 (GLIBC_2.2.5) printf
+0000000000000000  w   D  *UND*	0000000000000000  Base        __gmon_start__
+0000000000000000  w   D  *UND*	0000000000000000  Base        _ITM_registerTMCloneTable
+0000000000000000  w   DF *UND*	0000000000000000 (GLIBC_2.2.5) __cxa_finalize
+#+end_example
+
+
+- LLVM
+
+#+begin_src shell :dir . :results output
+/opt/homebrew/opt/llvm/bin/llvm-objdump -T  Practice/hello_worlds/hello_world_ELF_x86
+#+end_src
+
+#+RESULTS:
+#+begin_example
+
+Practice/hello_worlds/hello_world_ELF_x86:	file format elf64-x86-64
+
+DYNAMIC SYMBOL TABLE:
+0000000000000000      DF *UND*	0000000000000000 (GLIBC_2.34) __libc_start_main
+0000000000000000  w   D  *UND*	0000000000000000              _ITM_deregisterTMCloneTable
+0000000000000000      DF *UND*	0000000000000000 (GLIBC_2.2.5) printf
+0000000000000000  w   D  *UND*	0000000000000000              __gmon_start__
+0000000000000000  w   D  *UND*	0000000000000000              _ITM_registerTMCloneTable
+0000000000000000  w   DF *UND*	0000000000000000 (GLIBC_2.2.5) __cxa_finalize
+#+end_example
+
 
 *** Macho
 Общая схема
@@ -335,3 +686,6 @@ ascher@ Practice % greadelf -d practice_strings | grep NEEDED
  0x0000000000000001 (NEEDED)             Shared library: [libcrypto.so.1.1]
  0x0000000000000001 (NEEDED)             Shared library: [libc.so.6]
 #+end_src
+
+* Практика
+[[id:cd4b5f87-324f-485f-a6e0-250c927351e8][Magic Ball]]

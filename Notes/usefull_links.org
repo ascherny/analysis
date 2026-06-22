@@ -5,3 +5,4 @@
 * [[https://web.archive.org/web/20250615161816/http://www.skyfree.org/linux/references/ELF_Format.pdf][ELF_format]] :elf:doc:
 * [[https://learn.microsoft.com/en-us/windows/win32/debug/pe-format][PE_format]] :pe:doc:
 * [[https://www.exploit-db.com/docs/english/13019-shell-code-for-beginners.pdf][Shellcode_for_beginers]] :shellcode:
+* [[https://www.learncpp.com/cpp-tutorial/the-virtual-table/][Статья про virtual table cpp]] :cpp:virtualtable:

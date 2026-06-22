@@ -1,4 +1,53 @@
 #+title: Other
+* Заметки
+** Виртуальное адресное пространство :zapolni:
+** Файловый дескриптор
+Таблица дескрипторов это объект ядра принадлежащий процессу
+У каждого процесса есть таблица дескрипторов - массив чисел который связан с каждым из открытых файлов
+Системные вызовы принимают и возвращают индексы этого массива
+
+Свойство направления RWU задается уже системным вызовом который принимает fd
+И реализует проверку прав на объект
+
+#+begin_src shell  :results output
+lsof | grep "emacs"
+#+end_src
+
+#+RESULTS:
+#+begin_example
+emacs-30. 1792 learn  cwd       DIR               1,15        416             8883800 /Users/learn/Work/Analysis
+emacs-30. 1792 learn  txt       REG               1,15    8072240             9457608 /opt/homebrew/Cellar/emacs/30.2_2/bin/emacs-30.2
+emacs-30. 1792 learn  txt       REG               1,15     107728             9456204 /opt/homebrew/Cellar/libtasn1/4.21.0/lib/libtasn1.6.dylib
+emacs-30. 1792 learn  txt       REG               1,15     214800             2109739 /opt/homebrew/Cellar/tree-sitter@0.25/0.25.10/lib/libtree-sitter.0.25.dylib
+emacs-30. 1792 learn  txt       REG               1,15     452832              780800 /opt/homebrew/Cellar/gmp/6.3.0/lib/libgmp.10.dylib
+emacs-30. 1792 learn  txt       REG               1,15     228800             9266411 /opt/homebrew/Cellar/gettext/1.0/lib/libintl.8.dylib
+emacs-30. 1792 learn  txt       REG               1,15     258528              750949 /opt/homebrew/Cellar/libidn2/2.3.8/lib/libidn2.0.dylib
+emacs-30. 1792 learn  txt       REG               1,15      81288 1152921500312585081 /usr/share/locale/en_US.UTF-8/LC_COLLATE
+emacs-30. 1792 learn  txt       REG               1,15     295504            14091600 /opt/homebrew/Cellar/nettle/4.0/lib/libhogweed.7.0.dylib
+emacs-30. 1792 learn  txt       REG               1,15     168112            12200541 /Users/learn/.config/emacs/.local/straight/build-30.2/vterm/vterm-module.so
+emacs-30. 1792 learn  txt       REG               1,15    2374000 1152921500312573277 /usr/lib/dyld
+emacs-30. 1792 learn  txt       REG               1,15    2342768            14099251 /opt/homebrew/Cellar/gnutls/3.8.13_2/lib/libgnutls.30.dylib
+emacs-30. 1792 learn  txt       REG               1,15    1616736             9456283 /opt/homebrew/Cellar/p11-kit/0.26.2/lib/libp11-kit.0.dylib
+emacs-30. 1792 learn  txt       REG               1,15     332608            14091601 /opt/homebrew/Cellar/nettle/4.0/lib/libnettle.9.0.dylib
+emacs-30. 1792 learn  txt       REG               1,15    2023040             9266344 /opt/homebrew/Cellar/libunistring/1.4.2/lib/libunistring.5.dylib
+emacs-30. 1792 learn  txt       REG               1,15   11675464             9451704 /opt/homebrew/Cellar/emacs/30.2_2/libexec/emacs/30.2/aarch64-apple-darwin25.2.0/emacs-82f95d93e0b8c5c227b788cd5c6207cfcf90bd6e122537c6c0fbb46430201c9c.pdmp
+emacs-30. 1792 learn    0u      CHR               16,0     0t1488                 715 /dev/ttys000
+emacs-30. 1792 learn    1u      CHR               16,0     0t1488                 715 /dev/ttys000
+emacs-30. 1792 learn    2u      CHR               16,0     0t1488                 715 /dev/ttys000
+emacs-30. 1792 learn    3r      CHR               17,1      0t228                 612 /dev/urandom
+emacs-30. 1792 learn    4u      CHR                2,0  0t3352035                 335 /dev/tty
+emacs-30. 1792 learn    5u      CHR               15,1  0t1994602                 605 /dev/ptmx
+emacs-30. 1792 learn    6r      CHR               16,1        0t0                 717 /dev/ttys001
+emacs-30. 1792 learn    8      PIPE 0x674693ab49a2ff77      16384                     ->0xf9085507cf739815
+emacs-30. 1792 learn    9      PIPE 0xf9085507cf739815      16384                     ->0x674693ab49a2ff77
+emacs-30. 1792 learn   10      PIPE 0xab0d2a503c0151fc      16384                     ->0xc32e7cd003b86ccb
+zsh       3235 learn    2w      REG               1,15          0            15635533 /private/var/folders/9r/2xc7lbmd0115wkm3hyfjk0tc0000gn/T/emacs6kFwdW
+lsof      3236 learn    2w      REG               1,15          0            15635533 /private/var/folders/9r/2xc7lbmd0115wkm3hyfjk0tc0000gn/T/emacs6kFwdW
+grep      3237 learn    2w      REG               1,15          0            15635533 /private/var/folders/9r/2xc7lbmd0115wkm3hyfjk0tc0000gn/T/emacs6kFwdW
+#+end_example
+
+
+
 * Вопросы :task:
 ** env/PATH
 Чем отличаются .zshrc, .zshenv, .zprofile и окружении из GUI программ на MacOs и как правильно реализовывать универсальное обращается к утилите по имени
