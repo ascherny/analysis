@@ -47,6 +47,8 @@ grep      3237 learn    2w      REG               1,15          0            156
 #+end_example
 
 
+** Реально other
+ llvm-readelf -p .commen
 
 * Вопросы :task:
 ** env/PATH
