@@ -7,3 +7,4 @@
 * [[https://www.exploit-db.com/docs/english/13019-shell-code-for-beginners.pdf][Shellcode_for_beginers]] :shellcode:
 * [[https://www.learncpp.com/cpp-tutorial/the-virtual-table/][Статья про virtual table cpp]] :cpp:virtualtable:
 * [[https://flatassembler.net/][flat_assembler]] :asm:practice:
+* Trace task [[https://habr.com/ru/articles/952496/][1]] [[https://kt.gy/blog/2019/10/hitconctf-2019-quals-reverse-coredumb/][2]] [[https://blog.omroot.io/flareon11-challenge-5-sshd/][3]] [[https://www.brendangregg.com/blog/2016-08-09/gdb-example-ncurses.html][4]]

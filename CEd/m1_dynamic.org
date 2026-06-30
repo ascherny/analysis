@@ -94,227 +94,342 @@ Frida - фреймворк, позволяющий описывать логик
 
 * Техники :dynamic:alghrithm:
 
-Основной способ использовани дебаггера это установка точке останова и пошаговое исполнение кода с анализом значений регистров и адресов памяти
+** Дебаг
+    Основной способ использовани дебаггера это установка точке останова и пошаговое исполнение кода с анализом значений регистров и адресов памяти
 
-** gdb/gef cheatsheet :gdb:gef:cs:
+*** gdb/gef cheatsheet :gdb:gef:cs:
 
-Step Into – выполнить следующую строку/инструкцию с заходом в подпрограмму.
-Команда: step (s) — по строкам исходного кода или stepi (si) — по инструкциям
+    Step Into – выполнить следующую строку/инструкцию с заходом в подпрограмму.
+    Команда: step (s) — по строкам исходного кода или stepi (si) — по инструкциям
 
-Step Over – выполнить следующую строку/инструкцию без захода в подпрограмму.
-Команда: next (n) — по строкам исходного кода или nexti (ni) — по инструкциям
+    Step Over – выполнить следующую строку/инструкцию без захода в подпрограмму.
+    Команда: next (n) — по строкам исходного кода или nexti (ni) — по инструкциям
 
-Step Out – завершить выполнение текущей функции и вернуться в вызывающую.
-Команда: finish
+    Step Out – завершить выполнение текущей функции и вернуться в вызывающую.
+    Команда: finish
 
-gdb> info registers     # список основных регистров с их содержимым
-gdb> print $<регистр>   # вывести значение конкретного <регистра>
+    gdb> info registers     # список основных регистров с их содержимым
+    gdb> print $<регистр>   # вывести значение конкретного <регистра>
 
-Просмотр произвольного адреса производится при помощи команды (x)
+    Просмотр произвольного адреса производится при помощи команды (x)
 
-Задать значение можно при помощи команды set
+    Задать значение можно при помощи команды set
 
-x/<Количество><формат><размер>
+    x/<Количество><формат><размер>
 
-Например, x/8xb 0x00007fffffffe480 означает "Отобрази мне память (x/) в количестве 8 единиц (8) в формате hex (x) байт (b). То есть вывести 8 байт по адресу 0x00007fffffffe480
+    Например, x/8xb 0x00007fffffffe480 означает "Отобрази мне память (x/) в количестве 8 единиц (8) в формате hex (x) байт (b). То есть вывести 8 байт по адресу 0x00007fffffffe480
 
-#+begin_src
-$> x/8xb 0x00007fffffffe480
-0x7fffffffe480: 0x90    0x3c    0xad    0xf7    0xff    0x7f    0x00    0x00
-#+end_src
+    #+begin_src
+    $> x/8xb 0x00007fffffffe480
+    0x7fffffffe480: 0x90    0x3c    0xad    0xf7    0xff    0x7f    0x00    0x00
+    #+end_src
 
-** Пример
+*** Пример
 
+    #+begin_src shell
+    mkdir ./Practice/gef_tutorial
+    #+end_src
+
+
+    #+begin_src C :results output :tangle ./Practice/gef_tutorial/gef_tutorial.c
+    #include <stdio.h>
+
+    int func1(int param);
+    int func2(int param);
+    int func3(int param);
+    int func4(int param);
+
+    int func1(int param)
+    {
+        return func2(param+0x0010);
+    }
+
+    int func2(int param)
+    {
+        return func3(param % 0x0025);
+    }
+
+    int func3(int param)
+    {
+        return func4(param*0x0005);
+    }
+
+    int func4(int param)
+    {
+        return param - 0x0015;
+    }
+
+    int main(int argc, char** argv)
+    {
+        int data = 0x0001;
+        data = func1(data);
+        printf("%d\n", data);
+    }
+    #+end_src
+
+    #+RESULTS:
+    : 64
+
+    Попробуем сделать все в lldb и заодно вспомним ARM asm
+
+    #+begin_src asm
+    (lldb) target create "CEd/Practice/gef_tutorial/gef_tutorial"
+    Current executable set to '/Users/ascher/Work/Analysis/CEd/Practice/gef_tutorial/gef_tutorial' (arm64).
+    (lldb) b func3
+    Breakpoint 1: where = gef_tutorial`func3, address = 0x00000001000004bc
+    (lldb) r
+    Process 56983 launched: '/Users/ascher/Work/Analysis/CEd/Practice/gef_tutorial/gef_tutorial' (arm64)
+    Process 56983 stopped
+    \* thread #1, queue = 'com.apple.main-thread', stop reason = breakpoint 1.1
+        frame #0: 0x00000001000004bc gef_tutorial`func3
+    gef_tutorial`func3:
+    ->  0x1000004bc <+0>:  sub    sp, sp, #0x20
+        0x1000004c0 <+4>:  stp    x29, x30, [sp, #0x10]
+        0x1000004c4 <+8>:  add    x29, sp, #0x10
+        0x1000004c8 <+12>: stur   w0, [x29, #-0x4]
+    Target 0: (gef_tutorial) stopped.
+    #+end_src
+
+
+    выделяем 0x20 на стеке SP=old_SP - 0x20
+    сохраняем в 0x29(fp), 0x30(lr) в SP+10, SP+18
+    old_x29 в sp+10
+    old_x30 в sp+18
+    x29 = sp+0x10 = new FP
+    w0 лежит в x29-0x4=sp+0xC
+    ~идем несколько ni во время которых~
+    ~кладем w0 в w8 через стек~
+    ~w9 = 5~
+    ~w0 = w8*w9 = ??~
+
+    (lldb) print $w0
+    (unsigned int) 0x00000055
+
+*** Задача
+
+    #+begin_src shell :results verbatim
+    file Practice/856_task/856_task
+    #+end_src
+
+    #+RESULTS:
+    : Practice/856_task/856_task: ELF 32-bit LSB pie executable, Intel 80386, version 1 (SYSV), dynamically linked, interpreter /lib/ld-linux.so.2, BuildID[sha1]=8dc74b703371bcdbd529867692036ce7f8e31f46, for GNU/Linux 3.2.0, not stripped
+
+
+    #+begin_src shell
+    qemu-i386 -g 1234 ./856_task
+    #+end_src
+
+    #+begin_src shell
+    gdb-multiarch ./856_task
+    #+end_src
+
+    #+begin_src shell
+    gef>
+    target remote :1234
+    #+end_src
+
+    #+begin_src asm
+    (remote) gef➤  disas main
+    Dump of assembler code for function main:
+    0x004011ff <+0>:     endbr32
+    0x00401203 <+4>:     push   ebp
+    0x00401204 <+5>:     mov    ebp,esp
+    0x00401206 <+7>:     call   0x40122b
+    0x0040120b <+12>:    add    eax,0x2dd1
+    0x00401210 <+17>:    mov    ecx,0xe
+    0x00401215 <+22>:    call   0x4011c6
+    0x0040121a <+27>:    push   eax
+    0x0040121b <+28>:    call   0x4011e4
+    0x00401220 <+33>:    push   eax
+    0x00401221 <+34>:    call   0x4011ad
+    0x00401226 <+39>:    add    esp,0x4
+    0x00401229 <+42>:    leave
+    0x0040122a <+43>:    ret
+    End of assembler dump.
+    #+end_src
+
+    Первый вопрос, в main видим 4 вызов
+    Первая выглядит не релевантной
+    #+begin_src asm
+    (remote) gef➤  x/5i 0x40122b
+    0x40122b:    mov    eax,DWORD PTR [esp]
+    0x40122e:    ret
+    0x40122f:    nop
+    0x401230:    endbr32
+    0x401234:    push   ebp
+    #+end_src
+
+    Остается 3, ставим bp
+    #+begin_src asm
+    (remote) gef➤  b *0x4011c6
+    Breakpoint 2 at 0x4011c6
+    (remote) gef➤  b *0x4011e4
+    Breakpoint 3 at 0x4011e4
+    (remote) gef➤  b *0x4011ad
+    Breakpoint 4 at 0x4011ad
+    #+end_src
+
+    идем по каждой
+
+    #+begin_src asm
+    (remote) gef➤  bt
+    #0  0x004011c6 in ?? ()
+    #1  0x0040121a in main ()
+    (remote) gef➤
+
+    [#0] Id 1, stopped 0x4011e4 in ?? (), reason: BREAKPOINT
+    ──────────────────────────────────────────────────────────── trace ────
+    [#0] 0x4011e4 → endbr32
+    [#1] 0x401220 → main()
+    ───────────────────────────────────────────────────────────────────────
+    (remote) gef➤  bt
+    #0  0x004011e4 in ?? ()
+    #1  0x00401220 in main ()
+    (remote) gef➤
+
+    [#0] Id 1, stopped 0x4011ad in ?? (), reason: BREAKPOINT
+    ──────────────────────────────────────────────────────────── trace ────
+    [#0] 0x4011ad → endbr32
+    [#1] 0x401226 → main()
+    ───────────────────────────────────────────────────────────────────────
+    (remote) gef➤  bt
+    #0  0x004011ad in ?? ()
+    #1  0x00401226 in main ()
+    (remote) gef➤
+    #+end_src
+
+    Вложенных вызовов нет
+
+    Идем к следующему
+    Также пройдемся по трем функциям на bp
+    и потом finish
+    $eax   : 28
+    $eax   : 31
+    $eax   : 36
+
+    Финальный вопрос
+    bp на функции
+
+    (remote) gef➤  b *0x401215
+    Breakpoint 14 at 0x401215
+    c
+    (remote) gef➤  info registers ecx
+    ecx            0xe                 0xe
+    (remote) gef➤  info registers ecx
+    ecx            0x5                 0x5
+    c
+
+    $eax   : 14
+** Трассировка
+Отладка бывает на уровне
+- инструкций
+- вызовов
+- строк кода
+
+Вызовы:
+call trace - отображает динамическую цепочку вызовов функций до определенного состоряния
+stack trace - список активных функций в момент выполнения программы
+        - адрес возврата каждой функции
+        - имя/адрес
+        - параметры функции
+
+*** Алгоритм
+1. Определить процесс для которого надо получить стек вызовов
+2. Подключиться к процессу
+3. Получить стек
+4. Верхний кадр стека - фрейм #0 текущая функция, от него вниз цепочка вызовов
+
+*** Пример
 #+begin_src shell
-mkdir ./Practice/gef_tutorial
+hakcer@hakcer-transfer:~$ nc -l -p 12345&
+[1] 22768
+hakcer@hakcer-transfer:~$ sudo gdb -p 22768
+
+(gdb) bt
+#0  __internal_syscall_cancel (a1=3, a2=281474741706568,
+    a3=281474741706384, a4=2048, a5=a5@entry=0, a6=a6@entry=0,
+    nr=nr@entry=242) at ./nptl/cancellation.c:40
+#1  0x0000f5f50d487d50 in __syscall_cancel (a1=<optimized out>,
+    a2=<optimized out>, a3=<optimized out>, a4=<optimized out>,
+    a5=a5@entry=0, a6=a6@entry=0, nr=nr@entry=242)
+    at ./nptl/cancellation.c:75
+#2  0x0000f5f50d4f93c4 [PAC] in accept4 (fd=<optimized out>,
+    addr=..., addr_len=<optimized out>, flags=<optimized out>)
+    at ../sysdeps/unix/sysv/linux/accept4.c:31
+#3  0x0000aed14f172c08 [PAC] in ?? ()
+#4  0x0000f5f50d42259c [PAC] in __libc_start_call_main (
+    main=main@entry=0xaed14f171e80, argc=argc@entry=4,
+    argv=argv@entry=0xfffff1fe3238)
+    at ../sysdeps/nptl/libc_start_call_main.h:58
+#5  0x0000f5f50d42267c [PAC] in __libc_start_main_impl (
+    main=0xaed14f171e80, argc=4, argv=0xfffff1fe3238,
+    init=<optimized out>, fini=<optimized out>,
+    rtld_fini=<optimized out>, stack_end=<optimized out>)
+    at ../csu/libc-start.c:360
+#6  0x0000aed14f1741f0 [PAC] in ?? ()
+(gdb) i f
+Stack level 0, frame at 0xfffff1fe1d20:
+ pc = 0xf5f50d487d1c in __internal_syscall_cancel
+    (./nptl/cancellation.c:40); saved pc = 0xf5f50d487d50
+ called by frame at 0xfffff1fe1d30
+ source language c.
+ Arglist at 0xfffff1fe1d20, args: a1=3, a2=281474741706568,
+    a3=281474741706384, a4=2048, a5=a5@entry=0, a6=a6@entry=0,
+    nr=nr@entry=242
+ Locals at 0xfffff1fe1d20, Previous frame's sp is 0xfffff1fe1d20
+(gdb)
 #+end_src
 
+*** Задача
 
-#+begin_src C :results output :tangle ./Practice/gef_tutorial/gef_tutorial.c
-#include <stdio.h>
+hakcer@hakcer-transfer:~$ qemu-x86_64 -g 1234 Work/dump_clang
 
-int func1(int param);
-int func2(int param);
-int func3(int param);
-int func4(int param);
+c
 
-int func1(int param)
-{
-    return func2(param+0x0010);
-}
+#+name: trace_task
+#+begin_example
+(remote) gef➤  bt
+#0  0x0000e7922cea5fed in pthread_kill ()
+   from target:/lib/x86_64-linux-gnu/libc.so.6
+#1  0x0000e7922ce45e2e in raise ()
+   from target:/lib/x86_64-linux-gnu/libc.so.6
+#2  0x0000e7922ce28888 in abort ()
+   from target:/lib/x86_64-linux-gnu/libc.so.6
+#3  0x0000555555557396 in sub_1337C0DE (a=0x175, b=0x1, c=0x2)
+    at main.c:79
+#4  0x000055555555736d in sub_ABADBABE (a=0x175) at main.c:75
+#5  0x0000555555557346 in sub_8BADF00D (a=0x16b, b=0x175) at main.c:71
+#6  0x0000555555557329 in sub_B16B00B5 (a=0x16b) at main.c:67
+#7  0x0000555555557309 in sub_FACEB00C (a=0x1a2, b=0x37, c=0x16b)
+    at main.c:63
+#8  0x00005555555572df in sub_C001D00D (a=0x1a2, b=0x37) at main.c:59
+#9  0x00005555555572b8 in sub_0BADF00D (a=0x1a2) at main.c:55
+#10 0x0000555555557299 in sub_FEEDC0DE (a=0xd1, b=0x1a2, c=0x7)
+    at main.c:51
+#11 0x000055555555726d in sub_DEADBEEF (a=0xd1) at main.c:47
+#12 0x000055555555723c in sub_1234ABCD (a=0x6a, b=0x67, c=0xd1,
+    d=0x64) at main.c:43
+#13 0x0000555555557214 in sub_AABBCCDD (a=0x6a, b=0x67) at main.c:39
+#14 0x00005555555571e9 in sub_1D2E3F4A (a=0x6a) at main.c:35
+#15 0x00005555555571bb in sub_5C8A9F01 (a=0xb, b=0x2a, c=0x35)
+    at main.c:31
+#16 0x000055555555718f in sub_7B3E1D4A (a=0xb, b=0x2a) at main.c:27
+#17 0x000055555555715b in sub_9A1F2C3D (a=0xa) at main.c:23
+#18 0x00005555555573b9 in main () at main.c:84
+#+end_example
 
-int func2(int param)
-{
-    return func3(param % 0x0025);
-}
-
-int func3(int param)
-{
-    return func4(param*0x0005);
-}
-
-int func4(int param)
-{
-    return param - 0x0015;
-}
-
-int main(int argc, char** argv)
-{
-    int data = 0x0001;
-    data = func1(data);
-    printf("%d\n", data);
-}
+#+begin_src emacs-lisp :var trace=trace_task :results value
+(let ((sum 0)
+      values)
+  (dolist (line (split-string trace "\n" t))
+    (when (string-match "a=0x\\([0-9a-fA-F]+\\)" line)
+      (let ((v (string-to-number (match-string 1 line) 16)))
+        (push v values)
+        (setq sum (+ sum v)))))
+  (list
+   :values (nreverse values)
+   :sum sum))
 #+end_src
 
 #+RESULTS:
-: 64
-
-Попробуем сделать все в lldb и заодно вспомним ARM asm
-
-#+begin_src asm
-(lldb) target create "CEd/Practice/gef_tutorial/gef_tutorial"
-Current executable set to '/Users/ascher/Work/Analysis/CEd/Practice/gef_tutorial/gef_tutorial' (arm64).
-(lldb) b func3
-Breakpoint 1: where = gef_tutorial`func3, address = 0x00000001000004bc
-(lldb) r
-Process 56983 launched: '/Users/ascher/Work/Analysis/CEd/Practice/gef_tutorial/gef_tutorial' (arm64)
-Process 56983 stopped
-\* thread #1, queue = 'com.apple.main-thread', stop reason = breakpoint 1.1
-    frame #0: 0x00000001000004bc gef_tutorial`func3
-gef_tutorial`func3:
-->  0x1000004bc <+0>:  sub    sp, sp, #0x20
-    0x1000004c0 <+4>:  stp    x29, x30, [sp, #0x10]
-    0x1000004c4 <+8>:  add    x29, sp, #0x10
-    0x1000004c8 <+12>: stur   w0, [x29, #-0x4]
-Target 0: (gef_tutorial) stopped.
-#+end_src
-
-
-выделяем 0x20 на стеке SP=old_SP - 0x20
-сохраняем в 0x29(fp), 0x30(lr) в SP+10, SP+18
-old_x29 в sp+10
-old_x30 в sp+18
-x29 = sp+0x10 = new FP
-w0 лежит в x29-0x4=sp+0xC
-~идем несколько ni во время которых~
-~кладем w0 в w8 через стек~
-~w9 = 5~
-~w0 = w8*w9 = ??~
-
-(lldb) print $w0
-(unsigned int) 0x00000055
-** Задача
-
-#+begin_src shell :results verbatim
-file Practice/856_task/856_task
-#+end_src
-
-#+RESULTS:
-: Practice/856_task/856_task: ELF 32-bit LSB pie executable, Intel 80386, version 1 (SYSV), dynamically linked, interpreter /lib/ld-linux.so.2, BuildID[sha1]=8dc74b703371bcdbd529867692036ce7f8e31f46, for GNU/Linux 3.2.0, not stripped
-
-
-#+begin_src shell
-qemu-i386 -g 1234 ./856_task
-#+end_src
-
-#+begin_src shell
-gdb-multiarch ./856_task
-#+end_src
-
-#+begin_src shell
-gef>
-target remote :1234
-#+end_src
-
-#+begin_src asm
-(remote) gef➤  disas main
-Dump of assembler code for function main:
-   0x004011ff <+0>:     endbr32
-   0x00401203 <+4>:     push   ebp
-   0x00401204 <+5>:     mov    ebp,esp
-   0x00401206 <+7>:     call   0x40122b
-   0x0040120b <+12>:    add    eax,0x2dd1
-   0x00401210 <+17>:    mov    ecx,0xe
-   0x00401215 <+22>:    call   0x4011c6
-   0x0040121a <+27>:    push   eax
-   0x0040121b <+28>:    call   0x4011e4
-   0x00401220 <+33>:    push   eax
-   0x00401221 <+34>:    call   0x4011ad
-   0x00401226 <+39>:    add    esp,0x4
-   0x00401229 <+42>:    leave
-   0x0040122a <+43>:    ret
-End of assembler dump.
-#+end_src
-
-Первый вопрос, в main видим 4 вызов
-Первая выглядит не релевантной
-#+begin_src asm
-(remote) gef➤  x/5i 0x40122b
-   0x40122b:    mov    eax,DWORD PTR [esp]
-   0x40122e:    ret
-   0x40122f:    nop
-   0x401230:    endbr32
-   0x401234:    push   ebp
-#+end_src
-
-Остается 3, ставим bp
-#+begin_src asm
-(remote) gef➤  b *0x4011c6
-Breakpoint 2 at 0x4011c6
-(remote) gef➤  b *0x4011e4
-Breakpoint 3 at 0x4011e4
-(remote) gef➤  b *0x4011ad
-Breakpoint 4 at 0x4011ad
-#+end_src
-
-идем по каждой
-
-#+begin_src asm
-(remote) gef➤  bt
-#0  0x004011c6 in ?? ()
-#1  0x0040121a in main ()
-(remote) gef➤
-
-[#0] Id 1, stopped 0x4011e4 in ?? (), reason: BREAKPOINT
-──────────────────────────────────────────────────────────── trace ────
-[#0] 0x4011e4 → endbr32
-[#1] 0x401220 → main()
-───────────────────────────────────────────────────────────────────────
-(remote) gef➤  bt
-#0  0x004011e4 in ?? ()
-#1  0x00401220 in main ()
-(remote) gef➤
-
-[#0] Id 1, stopped 0x4011ad in ?? (), reason: BREAKPOINT
-──────────────────────────────────────────────────────────── trace ────
-[#0] 0x4011ad → endbr32
-[#1] 0x401226 → main()
-───────────────────────────────────────────────────────────────────────
-(remote) gef➤  bt
-#0  0x004011ad in ?? ()
-#1  0x00401226 in main ()
-(remote) gef➤
-#+end_src
-
-Вложенных вызовов нет
-
-Идем к следующему
-Также пройдемся по трем функциям на bp
-и потом finish
-$eax   : 28
-$eax   : 31
-$eax   : 36
-
-Финальный вопрос
-bp на функции
-
-(remote) gef➤  b *0x401215
-Breakpoint 14 at 0x401215
-c
-(remote) gef➤  info registers ecx
-ecx            0xe                 0xe
-(remote) gef➤  info registers ecx
-ecx            0x5                 0x5
-c
-
-$eax   : 14
+| :values | (373 373 363 363 418 418 418 209 209 106 106 106 11 11 10) | :sum | 3494 |
