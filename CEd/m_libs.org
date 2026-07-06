@@ -1,0 +1,274 @@
+#+title: M Libs
+
+Процесс отладки библиотеки
+Для начала напишем небольшую DLL (назовём её ExampleDll), которая будет что-то выполнять в точке входа:
+
+
+#+begin_src C
+VOID
+WINAPI // ??
+AllocateAndWrite(
+    VOID
+) {
+    PVOID Memory = VirtualAlloc(NULL, 0x1000, (MEM_COMMIT | MEM_RESERVE), PAGE_READWRITE);
+    if(Memory == NULL)
+        return;
+
+    memset(Memory, 0x41, 0x1000);
+}
+
+BOOL
+APIENTRY // ??
+DllMain(
+    _In_ HMODULE hModule,
+    _In_ DWORD   ul_reason_for_call,
+    _In_ LPVOID lpReserved
+) {
+    switch (ul_reason_for_call) {
+            case DLL_PROCESS_ATTACH:
+                AllocateAndWrite();
+            break;
+            case DLL_THREAD_ATTACH:
+            case DLL_THREAD_DETACH:
+            case DLL_PROCESS_DETACH:
+            break;
+    }
+    return TRUE;
+}
+#+end_src
+
+#+begin_src cmd
+D:\code\Work>clang ExampleDLL.c -o Example_O0.dll -shared -lkernel32 -O0
+#+end_src
+
+
+#+begin_src C
+__declspec(dllexport)
+PVOID
+WINAPI
+MyVirtualAllocRw(
+    _In_ SIZE_T Size
+) {
+    return VirtualAlloc(NULL, Size, (MEM_COMMIT | MEM_RESERVE), PAGE_READWRITE);
+}
+
+__declspec(dllexport)
+PVOID
+WINAPI
+MyVirtualAllocRo(
+    _In_ SIZE_T Size
+) {
+    return VirtualAlloc(NULL, Size, (MEM_COMMIT | MEM_RESERVE), PAGE_READONLY);
+}
+
+__declspec(dllexport)
+PVOID
+WINAPI
+MyVirtualAllocRwx(
+    _In_ SIZE_T Size
+) {
+    return VirtualAlloc(NULL, Size, (MEM_COMMIT | MEM_RESERVE), PAGE_EXECUTE_READWRITE);
+}
+
+VOID
+WINAPI
+AllocateAndWrite(
+    VOID
+) {
+    PVOID Memory = VirtualAlloc(NULL, 0x1000, (MEM_COMMIT | MEM_RESERVE), PAGE_READWRITE);
+    if(Memory == NULL)
+        return;
+
+    memset(Memory, 0x41, 0x1000);
+}
+
+BOOL
+APIENTRY
+DllMain(
+    _In_ HMODULE hModule,
+    _In_ DWORD   ul_reason_for_call,
+    _In_ LPVOID lpReserved
+) {
+    switch (ul_reason_for_call) {
+            case DLL_PROCESS_ATTACH:
+                AllocateAndWrite();
+            break;
+            case DLL_THREAD_ATTACH:
+            case DLL_THREAD_DETACH:
+            case DLL_PROCESS_DETACH:
+            break;
+    }
+    return TRUE;
+}
+
+#+end_src
+
+
+*** win64dbg :win64dbg:
+Alt+F9 = exec to user code
+
+*** RVA :rva:
+Exported Function Address = Image Base + Export RVA
+
+*** rundll32 :rundll32:
+64-битный rundll32 находится по пути C:\Windows\System32\rundll32.exe,
+32-битный аналог находится по пути C:\Windows\SysWOW64\rundll32.exe.
+
+run x64dbg as admin
+open rundll32
+Нажимаем на пункт "Изменить аргументы командной строки".
+Далее вписываем                  путь до запущенного нами rundll32.
+После вписываем путь до DLL, которую мы хотим отлаживать, как на картинке ниже. Или можете скопировать сразу эту команду, предварительно вставив путь до своей DLL: "C:\Windows\System32\rundll32.exe" "path\to\name.dll" #1
+
+
+
+* Алгоритм
+** Алгоритм — загрузка DLL в отладчик без использования rundll32
+Узнать через DIE разрядность анализируемой DLL.
+Открыть отладчик нужной разрядности.
+Во вкладке Параметры, перейти в пункт Параметры, поставить флажок User DLL Entry в первом столбце.
+Загрузить DLL через вкладку Файл в отладчике (или используя Drag&Drop, или через клавишу F3).
+Нажать один раз на кнопку "Выполнить до пользовательского кода" (или же использовать комбинацию клавиш Alt + F9).
+DLL готова к анализу.
+** Алгоритм — загрузка DLL в отладчик с использованием rundll32
+Узнать через DIE разрядность анализируемой DLL.
+Открыть отладчик нужной разрядности.
+Во вкладке Параметры, перейти в пункт Параметры, поставить флажок User DLL Entry в первом столбце.
+В зависимости от разрядности DLL, открыть через вкладку Файл в отладчике (или используя Drag&Drop, или через клавишу F3) rundll32.exe по пути C:\Windows\System32\rundll32.exe или C:\Windows\SysWOW64\rundll32.exe.
+После загрузки rundll32.exe во вкладке Файл нажать на пункт "Изменить аргументы командной строки".
+В появившемся окне вписать команду "C:\Windows\System32\rundll32.exe"path\to\name.dll" #1, где "path\to\name.dll" — путь до анализируемой DLL.
+Нажать два раза на кнопку "Выполнить до пользовательского кода" (или же использовать комбинацию клавиш Alt + F9).
+DLL готова к анализу.
+** Алгоритм — отладка экспортируемых функций в DLL
+Узнать через DIE разрядность анализируемой DLL.
+В DIE во вкладке "Экспорт" узнать RVA интересующей экспортируемой функции.
+Загрузить DLL в отладчик нужной разрядности.
+Дойти до входной точки DLL.
+Во вкладке "Карта памяти" в столбце "Информация" ищем строку с названием анализируемой DLL.
+Крайний левый столбец Адрес содержит базовый адрес анализируемой DLL, копируем его.
+Прибавляем к скопированному адресу RVA интересующей экспортируемой функции.
+Во вкладке с регистрами ищем регистр RIP (или EIP, если анализируем 32-битную DLL) и нажимаем правой кнопкой мыши, в контекстном меню выбираем пункт Изменение значения, вставляем получившийся адрес в пункт "Выражение", затем нажимаем "ОК".
+Экспортируемая функция готова к анализу.
+* Задача
+Нужно понять что делает DLL в своей точке входа и рассмотреть её экспортируемую функцию.
+
+RVA 00001e70
+
+dbg -> alt+f9->bp на функции
+
+#+begin_src asm
+00007FF9230F121C | 48:8BC4                  | mov rax,rsp                             |
+00007FF9230F121F | 48:8958 20               | mov qword ptr ds:[rax+20],rbx           |
+00007FF9230F1223 | 4C:8940 18               | mov qword ptr ds:[rax+18],r8            |
+00007FF9230F1227 | 8950 10                  | mov dword ptr ds:[rax+10],edx           |
+00007FF9230F122A | 48:8948 08               | mov qword ptr ds:[rax+8],rcx            | rcx:"MZђ"
+00007FF9230F122E | 56                       | push rsi                                |
+00007FF9230F122F | 57                       | push rdi                                |
+00007FF9230F1230 | 41:56                    | push r14                                | r14:"MZђ"
+00007FF9230F1232 | 48:83EC 40               | sub rsp,40                              |
+00007FF9230F1236 | 49:8BF0                  | mov rsi,r8                              |
+00007FF9230F1239 | 8BFA                     | mov edi,edx                             |
+00007FF9230F123B | 4C:8BF1                  | mov r14,rcx                             | r14:"MZђ", rcx:"MZђ"
+00007FF9230F123E | 85D2                     | test edx,edx                            |
+00007FF9230F1240 | 75 0F                    | jne unknowndll.7FF9230F1251             |
+00007FF9230F1242 | 3915 382E0000            | cmp dword ptr ds:[7FF9230F4080],edx     |
+00007FF9230F1248 | 7F 07                    | jg unknowndll.7FF9230F1251              |
+00007FF9230F124A | 33C0                     | xor eax,eax                             |
+00007FF9230F124C | E9 E5000000              | jmp unknowndll.7FF9230F1336             |
+00007FF9230F1251 | 8D42 FF                  | lea eax,qword ptr ds:[rdx-1]            |
+00007FF9230F1254 | 83F8 01                  | cmp eax,1                               |
+00007FF9230F1257 | 77 40                    | ja unknowndll.7FF9230F1299              |
+00007FF9230F1259 | 48:8B05 201F0000         | mov rax,qword ptr ds:[7FF9230F3180]     |
+00007FF9230F1260 | 48:85C0                  | test rax,rax                            |
+00007FF9230F1263 | 75 05                    | jne unknowndll.7FF9230F126A             |
+00007FF9230F1265 | 8D58 01                  | lea ebx,qword ptr ds:[rax+1]            |
+00007FF9230F1268 | EB 08                    | jmp unknowndll.7FF9230F1272             |
+00007FF9230F126A | FF15 A01E0000            | call qword ptr ds:[7FF9230F3110]        |
+00007FF9230F1270 | 8BD8                     | mov ebx,eax                             |
+00007FF9230F1272 | 895C24 30                | mov dword ptr ss:[rsp+30],ebx           |
+00007FF9230F1276 | 85DB                     | test ebx,ebx                            |
+00007FF9230F1278 | 0F84 AE000000            | je unknowndll.7FF9230F132C              |
+00007FF9230F127E | 4C:8BC6                  | mov r8,rsi                              |
+00007FF9230F1281 | 8BD7                     | mov edx,edi                             |
+00007FF9230F1283 | 49:8BCE                  | mov rcx,r14                             | rcx:"MZђ", r14:"MZђ"
+00007FF9230F1286 | E8 A5FDFFFF              | call unknowndll.7FF9230F1030            |
+00007FF9230F128B | 8BD8                     | mov ebx,eax                             |
+00007FF9230F128D | 894424 30                | mov dword ptr ss:[rsp+30],eax           |
+00007FF9230F1291 | 85C0                     | test eax,eax                            |
+00007FF9230F1293 | 0F84 93000000            | je unknowndll.7FF9230F132C              |
+00007FF9230F1299 | 4C:8BC6                  | mov r8,rsi                              |
+00007FF9230F129C | 8BD7                     | mov edx,edi                             |
+00007FF9230F129E | 49:8BCE                  | mov rcx,r14                             | rcx:"MZђ", r14:"MZђ"
+00007FF9230F12A1 | E8 4A0B0000              | call unknowndll.7FF9230F1DF0            |
+00007FF9230F12A6 | 8BD8                     | mov ebx,eax                             |
+00007FF9230F12A8 | 894424 30                | mov dword ptr ss:[rsp+30],eax           |
+00007FF9230F12AC | 83FF 01                  | cmp edi,1                               |
+00007FF9230F12AF | 75 36                    | jne unknowndll.7FF9230F12E7             |
+00007FF9230F12B1 | 85C0                     | test eax,eax                            |
+00007FF9230F12B3 | 75 32                    | jne unknowndll.7FF9230F12E7             |
+00007FF9230F12B5 | 4C:8BC6                  | mov r8,rsi                              |
+00007FF9230F12B8 | 33D2                     | xor edx,edx                             |
+00007FF9230F12BA | 49:8BCE                  | mov rcx,r14                             | rcx:"MZђ", r14:"MZђ"
+00007FF9230F12BD | E8 2E0B0000              | call unknowndll.7FF9230F1DF0            |
+00007FF9230F12C2 | 48:85F6                  | test rsi,rsi                            |
+00007FF9230F12C5 | 0F95C1                   | setne cl                                |
+00007FF9230F12C8 | E8 CBFEFFFF              | call unknowndll.7FF9230F1198            |
+00007FF9230F12CD | 48:8B05 AC1E0000         | mov rax,qword ptr ds:[7FF9230F3180]     |
+00007FF9230F12D4 | 48:85C0                  | test rax,rax                            |
+00007FF9230F12D7 | 74 0E                    | je unknowndll.7FF9230F12E7              |
+00007FF9230F12D9 | 4C:8BC6                  | mov r8,rsi                              |
+00007FF9230F12DC | 33D2                     | xor edx,edx                             |
+00007FF9230F12DE | 49:8BCE                  | mov rcx,r14                             | rcx:"MZђ", r14:"MZђ"
+00007FF9230F12E1 | FF15 291E0000            | call qword ptr ds:[7FF9230F3110]        |
+00007FF9230F12E7 | 85FF                     | test edi,edi                            |
+00007FF9230F12E9 | 74 05                    | je unknowndll.7FF9230F12F0              |
+00007FF9230F12EB | 83FF 03                  | cmp edi,3                               |
+00007FF9230F12EE | 75 3C                    | jne unknowndll.7FF9230F132C             |
+00007FF9230F12F0 | 4C:8BC6                  | mov r8,rsi                              |
+00007FF9230F12F3 | 8BD7                     | mov edx,edi                             |
+00007FF9230F12F5 | 49:8BCE                  | mov rcx,r14                             | rcx:"MZђ", r14:"MZђ"
+00007FF9230F12F8 | E8 33FDFFFF              | call unknowndll.7FF9230F1030            |
+00007FF9230F12FD | 8BD8                     | mov ebx,eax                             |
+00007FF9230F12FF | 894424 30                | mov dword ptr ss:[rsp+30],eax           |
+00007FF9230F1303 | 85C0                     | test eax,eax                            |
+00007FF9230F1305 | 74 25                    | je unknowndll.7FF9230F132C              |
+00007FF9230F1307 | 48:8B05 721E0000         | mov rax,qword ptr ds:[7FF9230F3180]     |
+00007FF9230F130E | 48:85C0                  | test rax,rax                            |
+00007FF9230F1311 | 75 05                    | jne unknowndll.7FF9230F1318             |
+00007FF9230F1313 | 8D58 01                  | lea ebx,qword ptr ds:[rax+1]            |
+00007FF9230F1316 | EB 10                    | jmp unknowndll.7FF9230F1328             |
+00007FF9230F1318 | 4C:8BC6                  | mov r8,rsi                              |
+00007FF9230F131B | 8BD7                     | mov edx,edi                             |
+00007FF9230F131D | 49:8BCE                  | mov rcx,r14                             | rcx:"MZђ", r14:"MZђ"
+00007FF9230F1320 | FF15 EA1D0000            | call qword ptr ds:[7FF9230F3110]        |
+00007FF9230F1326 | 8BD8                     | mov ebx,eax                             |
+00007FF9230F1328 | 895C24 30                | mov dword ptr ss:[rsp+30],ebx           |
+00007FF9230F132C | EB 06                    | jmp unknowndll.7FF9230F1334             |
+00007FF9230F132E | 33DB                     | xor ebx,ebx                             |
+00007FF9230F1330 | 895C24 30                | mov dword ptr ss:[rsp+30],ebx           |
+00007FF9230F1334 | 8BC3                     | mov eax,ebx                             |
+00007FF9230F1336 | 48:8B5C24 78             | mov rbx,qword ptr ss:[rsp+78]           |
+00007FF9230F133B | 48:83C4 40               | add rsp,40                              |
+00007FF9230F133F | 41:5E                    | pop r14                                 | r14:"MZђ"
+00007FF9230F1341 | 5F                       | pop rdi                                 |
+00007FF9230F1342 | 5E                       | pop rsi                                 |
+00007FF9230F1343 | C3                       | ret                                     |
+
+#+end_src
+#+begin_src asm
+00007FF9230F1DF0 | 83FA 01                  | cmp edx,1                               |
+00007FF9230F1DF3 | 75 2A                    | jne unknowndll.7FF9230F1E1F             |
+00007FF9230F1DF5 | 0F31                     | rdtsc                                   |
+00007FF9230F1DF7 | 48:C1E2 20               | shl rdx,20                              |
+00007FF9230F1DFB | 48:0BC2                  | or rax,rdx                              | rax:EntryPoint
+00007FF9230F1DFE | 4C:8BC0                  | mov r8,rax                              | rax:EntryPoint
+00007FF9230F1E01 | 48:B8 ABAAAAAAAAAAAAAA   | mov rax,AAAAAAAAAAAAAAAB                | rax:EntryPoint
+00007FF9230F1E0B | 49:F7E0                  | mul r8                                  |
+00007FF9230F1E0E | 48:D1EA                  | shr rdx,1                               |
+00007FF9230F1E11 | 48:8D0C52                | lea rcx,qword ptr ds:[rdx+rdx*2]        | rcx:"MZђ"
+00007FF9230F1E15 | 4C:2BC1                  | sub r8,rcx                              | rcx:"MZђ"
+00007FF9230F1E18 | 4C:8905 61280000         | mov qword ptr ds:[7FF9230F4680],r8      |
+00007FF9230F1E1F | B8 01000000              | mov eax,1                               |
+00007FF9230F1E24 | C3                       | ret                                     |
+
+#+end_src
