@@ -16,6 +16,9 @@ if (*a3) {
 #+end_src
 
 * fgets :fgets:
+:PROPERTIES:
+:ID:       34fb842e-7d15-4f6e-ae04-52374df17a17
+:END:
 func(буфер, размер, FILE*)
 
 #+begin_src C
@@ -25,5 +28,4 @@ for ( i = 0; i < a2 && sub_5966C0(v8, 256, log_f); ++i )
     j_ifunc_5AABF0((int)v5 + *a3, v8, v7);
     v5 += v7;
 }
-
 #+end_src

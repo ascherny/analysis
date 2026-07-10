@@ -1,5 +1,10 @@
 #+title: Practice Signature Magic Ball
 
+* Magic Ball
+:PROPERTIES:
+:ID:       cd4b5f87-324f-485f-a6e0-250c927351e8
+:END:
+
 
 #+begin_src shell :dir . :results output
 ls signature/

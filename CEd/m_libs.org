@@ -152,123 +152,137 @@ DLL готова к анализу.
 * Задача
 Нужно понять что делает DLL в своей точке входа и рассмотреть её экспортируемую функцию.
 
-RVA 00001e70
+RVA DoSomethingFunny 00001e70
+
+#+begin_src asm
+00007FFCDC171344 | 48:895C24 08             | mov qword ptr ss:[rsp+8],rbx            |
+00007FFCDC171349 | 48:897424 10             | mov qword ptr ss:[rsp+10],rsi           |
+00007FFCDC17134E | 57                       | push rdi                                |
+00007FFCDC17134F | 48:83EC 20               | sub rsp,20                              |
+00007FFCDC171353 | 49:8BF8                  | mov rdi,r8                              |
+00007FFCDC171356 | 8BDA                     | mov ebx,edx                             |
+00007FFCDC171358 | 48:8BF1                  | mov rsi,rcx                             | rcx:"MZђ"
+00007FFCDC17135B | 83FA 01                  | cmp edx,1                               |
+00007FFCDC17135E | 75 05                    | jne unknowndll.7FFCDC171365             |
+00007FFCDC171360 | E8 9B010000              | call unknowndll.7FFCDC171500            |
+00007FFCDC171365 | 4C:8BC7                  | mov r8,rdi                              |
+00007FFCDC171368 | 8BD3                     | mov edx,ebx                             |
+00007FFCDC17136A | 48:8BCE                  | mov rcx,rsi                             | rcx:"MZђ"
+00007FFCDC17136D | 48:8B5C24 30             | mov rbx,qword ptr ss:[rsp+30]           | [rsp+30]:LdrGetProcedureAddressEx+3CE
+00007FFCDC171372 | 48:8B7424 38             | mov rsi,qword ptr ss:[rsp+38]           |
+00007FFCDC171377 | 48:83C4 20               | add rsp,20                              |
+00007FFCDC17137B | 5F                       | pop rdi                                 |
+00007FFCDC17137C | E9 9BFEFFFF              | jmp unknowndll.7FFCDC17121C             |
+#+end_src
 
 dbg -> alt+f9->bp на функции
 
 #+begin_src asm
-00007FF9230F121C | 48:8BC4                  | mov rax,rsp                             |
-00007FF9230F121F | 48:8958 20               | mov qword ptr ds:[rax+20],rbx           |
-00007FF9230F1223 | 4C:8940 18               | mov qword ptr ds:[rax+18],r8            |
-00007FF9230F1227 | 8950 10                  | mov dword ptr ds:[rax+10],edx           |
-00007FF9230F122A | 48:8948 08               | mov qword ptr ds:[rax+8],rcx            | rcx:"MZђ"
-00007FF9230F122E | 56                       | push rsi                                |
-00007FF9230F122F | 57                       | push rdi                                |
-00007FF9230F1230 | 41:56                    | push r14                                | r14:"MZђ"
-00007FF9230F1232 | 48:83EC 40               | sub rsp,40                              |
-00007FF9230F1236 | 49:8BF0                  | mov rsi,r8                              |
-00007FF9230F1239 | 8BFA                     | mov edi,edx                             |
-00007FF9230F123B | 4C:8BF1                  | mov r14,rcx                             | r14:"MZђ", rcx:"MZђ"
-00007FF9230F123E | 85D2                     | test edx,edx                            |
-00007FF9230F1240 | 75 0F                    | jne unknowndll.7FF9230F1251             |
-00007FF9230F1242 | 3915 382E0000            | cmp dword ptr ds:[7FF9230F4080],edx     |
-00007FF9230F1248 | 7F 07                    | jg unknowndll.7FF9230F1251              |
-00007FF9230F124A | 33C0                     | xor eax,eax                             |
-00007FF9230F124C | E9 E5000000              | jmp unknowndll.7FF9230F1336             |
-00007FF9230F1251 | 8D42 FF                  | lea eax,qword ptr ds:[rdx-1]            |
-00007FF9230F1254 | 83F8 01                  | cmp eax,1                               |
-00007FF9230F1257 | 77 40                    | ja unknowndll.7FF9230F1299              |
-00007FF9230F1259 | 48:8B05 201F0000         | mov rax,qword ptr ds:[7FF9230F3180]     |
-00007FF9230F1260 | 48:85C0                  | test rax,rax                            |
-00007FF9230F1263 | 75 05                    | jne unknowndll.7FF9230F126A             |
-00007FF9230F1265 | 8D58 01                  | lea ebx,qword ptr ds:[rax+1]            |
-00007FF9230F1268 | EB 08                    | jmp unknowndll.7FF9230F1272             |
-00007FF9230F126A | FF15 A01E0000            | call qword ptr ds:[7FF9230F3110]        |
-00007FF9230F1270 | 8BD8                     | mov ebx,eax                             |
-00007FF9230F1272 | 895C24 30                | mov dword ptr ss:[rsp+30],ebx           |
-00007FF9230F1276 | 85DB                     | test ebx,ebx                            |
-00007FF9230F1278 | 0F84 AE000000            | je unknowndll.7FF9230F132C              |
-00007FF9230F127E | 4C:8BC6                  | mov r8,rsi                              |
-00007FF9230F1281 | 8BD7                     | mov edx,edi                             |
-00007FF9230F1283 | 49:8BCE                  | mov rcx,r14                             | rcx:"MZђ", r14:"MZђ"
-00007FF9230F1286 | E8 A5FDFFFF              | call unknowndll.7FF9230F1030            |
-00007FF9230F128B | 8BD8                     | mov ebx,eax                             |
-00007FF9230F128D | 894424 30                | mov dword ptr ss:[rsp+30],eax           |
-00007FF9230F1291 | 85C0                     | test eax,eax                            |
-00007FF9230F1293 | 0F84 93000000            | je unknowndll.7FF9230F132C              |
-00007FF9230F1299 | 4C:8BC6                  | mov r8,rsi                              |
-00007FF9230F129C | 8BD7                     | mov edx,edi                             |
-00007FF9230F129E | 49:8BCE                  | mov rcx,r14                             | rcx:"MZђ", r14:"MZђ"
-00007FF9230F12A1 | E8 4A0B0000              | call unknowndll.7FF9230F1DF0            |
-00007FF9230F12A6 | 8BD8                     | mov ebx,eax                             |
-00007FF9230F12A8 | 894424 30                | mov dword ptr ss:[rsp+30],eax           |
-00007FF9230F12AC | 83FF 01                  | cmp edi,1                               |
-00007FF9230F12AF | 75 36                    | jne unknowndll.7FF9230F12E7             |
-00007FF9230F12B1 | 85C0                     | test eax,eax                            |
-00007FF9230F12B3 | 75 32                    | jne unknowndll.7FF9230F12E7             |
-00007FF9230F12B5 | 4C:8BC6                  | mov r8,rsi                              |
-00007FF9230F12B8 | 33D2                     | xor edx,edx                             |
-00007FF9230F12BA | 49:8BCE                  | mov rcx,r14                             | rcx:"MZђ", r14:"MZђ"
-00007FF9230F12BD | E8 2E0B0000              | call unknowndll.7FF9230F1DF0            |
-00007FF9230F12C2 | 48:85F6                  | test rsi,rsi                            |
-00007FF9230F12C5 | 0F95C1                   | setne cl                                |
-00007FF9230F12C8 | E8 CBFEFFFF              | call unknowndll.7FF9230F1198            |
-00007FF9230F12CD | 48:8B05 AC1E0000         | mov rax,qword ptr ds:[7FF9230F3180]     |
-00007FF9230F12D4 | 48:85C0                  | test rax,rax                            |
-00007FF9230F12D7 | 74 0E                    | je unknowndll.7FF9230F12E7              |
-00007FF9230F12D9 | 4C:8BC6                  | mov r8,rsi                              |
-00007FF9230F12DC | 33D2                     | xor edx,edx                             |
-00007FF9230F12DE | 49:8BCE                  | mov rcx,r14                             | rcx:"MZђ", r14:"MZђ"
-00007FF9230F12E1 | FF15 291E0000            | call qword ptr ds:[7FF9230F3110]        |
-00007FF9230F12E7 | 85FF                     | test edi,edi                            |
-00007FF9230F12E9 | 74 05                    | je unknowndll.7FF9230F12F0              |
-00007FF9230F12EB | 83FF 03                  | cmp edi,3                               |
-00007FF9230F12EE | 75 3C                    | jne unknowndll.7FF9230F132C             |
-00007FF9230F12F0 | 4C:8BC6                  | mov r8,rsi                              |
-00007FF9230F12F3 | 8BD7                     | mov edx,edi                             |
-00007FF9230F12F5 | 49:8BCE                  | mov rcx,r14                             | rcx:"MZђ", r14:"MZђ"
-00007FF9230F12F8 | E8 33FDFFFF              | call unknowndll.7FF9230F1030            |
-00007FF9230F12FD | 8BD8                     | mov ebx,eax                             |
-00007FF9230F12FF | 894424 30                | mov dword ptr ss:[rsp+30],eax           |
-00007FF9230F1303 | 85C0                     | test eax,eax                            |
-00007FF9230F1305 | 74 25                    | je unknowndll.7FF9230F132C              |
-00007FF9230F1307 | 48:8B05 721E0000         | mov rax,qword ptr ds:[7FF9230F3180]     |
-00007FF9230F130E | 48:85C0                  | test rax,rax                            |
-00007FF9230F1311 | 75 05                    | jne unknowndll.7FF9230F1318             |
-00007FF9230F1313 | 8D58 01                  | lea ebx,qword ptr ds:[rax+1]            |
-00007FF9230F1316 | EB 10                    | jmp unknowndll.7FF9230F1328             |
-00007FF9230F1318 | 4C:8BC6                  | mov r8,rsi                              |
-00007FF9230F131B | 8BD7                     | mov edx,edi                             |
-00007FF9230F131D | 49:8BCE                  | mov rcx,r14                             | rcx:"MZђ", r14:"MZђ"
-00007FF9230F1320 | FF15 EA1D0000            | call qword ptr ds:[7FF9230F3110]        |
-00007FF9230F1326 | 8BD8                     | mov ebx,eax                             |
-00007FF9230F1328 | 895C24 30                | mov dword ptr ss:[rsp+30],ebx           |
-00007FF9230F132C | EB 06                    | jmp unknowndll.7FF9230F1334             |
-00007FF9230F132E | 33DB                     | xor ebx,ebx                             |
-00007FF9230F1330 | 895C24 30                | mov dword ptr ss:[rsp+30],ebx           |
-00007FF9230F1334 | 8BC3                     | mov eax,ebx                             |
-00007FF9230F1336 | 48:8B5C24 78             | mov rbx,qword ptr ss:[rsp+78]           |
-00007FF9230F133B | 48:83C4 40               | add rsp,40                              |
-00007FF9230F133F | 41:5E                    | pop r14                                 | r14:"MZђ"
-00007FF9230F1341 | 5F                       | pop rdi                                 |
-00007FF9230F1342 | 5E                       | pop rsi                                 |
-00007FF9230F1343 | C3                       | ret                                     |
+00007FFCF46D1500 | 48:895C24 18             | mov qword ptr ss:[rsp+18],rbx           |
+00007FFCF46D1505 | 55                       | push rbp                                |
+00007FFCF46D1506 | 48:8BEC                  | mov rbp,rsp                             |
+00007FFCF46D1509 | 48:83EC 30               | sub rsp,30                              |
+00007FFCF46D150D | 48:8B05 EC2A0000         | mov rax,qword ptr ds:[7FFCF46D4000]     |
+00007FFCF46D1514 | 48:BB 32A2DF2D992B0000   | mov rbx,2B992DDFA232                    |
+00007FFCF46D151E | 48:3BC3                  | cmp rax,rbx                             |
+00007FFCF46D1521 | 75 77                    | jne unknowndll.7FFCF46D159A             |
+00007FFCF46D1523 | 48:8D4D 10               | lea rcx,qword ptr ss:[rbp+10]           | [rbp+10]:L"D:\\code\\Work\\UnknownDll.dll"
+00007FFCF46D1527 | 48:C745 10 00000000      | mov qword ptr ss:[rbp+10],0             | [rbp+10]:L"D:\\code\\Work\\UnknownDll.dll"
+00007FFCF46D152F | FF15 231B0000            | call qword ptr ds:[<GetSystemTimeAsFile |
+00007FFCF46D1535 | 48:8B45 10               | mov rax,qword ptr ss:[rbp+10]           | [rbp+10]:L"D:\\code\\Work\\UnknownDll.dll"
+00007FFCF46D1539 | 48:8945 F0               | mov qword ptr ss:[rbp-10],rax           |
+00007FFCF46D153D | FF15 1D1B0000            | call qword ptr ds:[<GetCurrentThreadId> |
+00007FFCF46D1543 | 8BC0                     | mov eax,eax                             |
+00007FFCF46D1545 | 48:3145 F0               | xor qword ptr ss:[rbp-10],rax           |
+00007FFCF46D1549 | FF15 191B0000            | call qword ptr ds:[<GetCurrentProcessId |
+00007FFCF46D154F | 8BC0                     | mov eax,eax                             |
+00007FFCF46D1551 | 48:8D4D 18               | lea rcx,qword ptr ss:[rbp+18]           |
+00007FFCF46D1555 | 48:3145 F0               | xor qword ptr ss:[rbp-10],rax           |
+00007FFCF46D1559 | FF15 111B0000            | call qword ptr ds:[<QueryPerformanceCou |
+00007FFCF46D155F | 8B45 18                  | mov eax,dword ptr ss:[rbp+18]           |
+00007FFCF46D1562 | 48:8D4D F0               | lea rcx,qword ptr ss:[rbp-10]           |
+00007FFCF46D1566 | 48:C1E0 20               | shl rax,20                              |
+00007FFCF46D156A | 48:3345 18               | xor rax,qword ptr ss:[rbp+18]           |
+00007FFCF46D156E | 48:3345 F0               | xor rax,qword ptr ss:[rbp-10]           |
+00007FFCF46D1572 | 48:33C1                  | xor rax,rcx                             | rcx:"MZђ"
+00007FFCF46D1575 | 48:B9 FFFFFFFFFFFF0000   | mov rcx,FFFFFFFFFFFF                    | rcx:"MZђ"
+00007FFCF46D157F | 48:23C1                  | and rax,rcx                             | rcx:"MZђ"
+00007FFCF46D1582 | 48:B9 33A2DF2D992B0000   | mov rcx,2B992DDFA233                    | rcx:"MZђ"
+00007FFCF46D158C | 48:3BC3                  | cmp rax,rbx                             |
+00007FFCF46D158F | 48:0F44C1                | cmove rax,rcx                           | rcx:"MZђ"
+00007FFCF46D1593 | 48:8905 662A0000         | mov qword ptr ds:[7FFCF46D4000],rax     |
+00007FFCF46D159A | 48:8B5C24 50             | mov rbx,qword ptr ss:[rsp+50]           |
+00007FFCF46D159F | 48:F7D0                  | not rax                                 |
+00007FFCF46D15A2 | 48:8905 972A0000         | mov qword ptr ds:[7FFCF46D4040],rax     |
+00007FFCF46D15A9 | 48:83C4 30               | add rsp,30                              |
+00007FFCF46D15AD | 5D                       | pop rbp                                 |
+00007FFCF46D15AE | C3                       | ret                                     |
 
 #+end_src
-#+begin_src asm
-00007FF9230F1DF0 | 83FA 01                  | cmp edx,1                               |
-00007FF9230F1DF3 | 75 2A                    | jne unknowndll.7FF9230F1E1F             |
-00007FF9230F1DF5 | 0F31                     | rdtsc                                   |
-00007FF9230F1DF7 | 48:C1E2 20               | shl rdx,20                              |
-00007FF9230F1DFB | 48:0BC2                  | or rax,rdx                              | rax:EntryPoint
-00007FF9230F1DFE | 4C:8BC0                  | mov r8,rax                              | rax:EntryPoint
-00007FF9230F1E01 | 48:B8 ABAAAAAAAAAAAAAA   | mov rax,AAAAAAAAAAAAAAAB                | rax:EntryPoint
-00007FF9230F1E0B | 49:F7E0                  | mul r8                                  |
-00007FF9230F1E0E | 48:D1EA                  | shr rdx,1                               |
-00007FF9230F1E11 | 48:8D0C52                | lea rcx,qword ptr ds:[rdx+rdx*2]        | rcx:"MZђ"
-00007FF9230F1E15 | 4C:2BC1                  | sub r8,rcx                              | rcx:"MZђ"
-00007FF9230F1E18 | 4C:8905 61280000         | mov qword ptr ds:[7FF9230F4680],r8      |
-00007FF9230F1E1F | B8 01000000              | mov eax,1                               |
-00007FF9230F1E24 | C3                       | ret                                     |
 
+#+begin_src asm
+00007FFCF4B31E70 | 40:53                    | push rbx                                |
+00007FFCF4B31E72 | 48:83EC 70               | sub rsp,70                              |
+00007FFCF4B31E76 | 48:8B05 83210000         | mov rax,qword ptr ds:[7FFCF4B34000]     | rax:EntryPoint
+00007FFCF4B31E7D | 48:33C4                  | xor rax,rsp                             | rax:EntryPoint
+00007FFCF4B31E80 | 48:894424 68             | mov qword ptr ss:[rsp+68],rax           | rax:EntryPoint
+00007FFCF4B31E85 | 33DB                     | xor ebx,ebx                             |
+00007FFCF4B31E87 | 45:33C9                  | xor r9d,r9d                             |
+00007FFCF4B31E8A | 48:833D EE270000 01      | cmp qword ptr ds:[7FFCF4B34680],1       |
+00007FFCF4B31E92 | BA 00000010              | mov edx,10000000                        |
+00007FFCF4B31E97 | 48:895C24 30             | mov qword ptr ss:[rsp+30],rbx           | [rsp+30]:LdrGetProcedureAddressEx+3CE
+00007FFCF4B31E9C | 41:B8 07000000           | mov r8d,7                               |
+00007FFCF4B31EA2 | C74424 28 80000000       | mov dword ptr ss:[rsp+28],80            |
+00007FFCF4B31EAA | C74424 20 02000000       | mov dword ptr ss:[rsp+20],2             |
+00007FFCF4B31EB2 | 75 7B                    | jne unknowndll.7FFCF4B31F2F             |
+00007FFCF4B31EB4 | 48:8D0D F5120000         | lea rcx,qword ptr ds:[7FFCF4B331B0]     | rcx:"MZђ", 00007FFCF4B331B0:L"C:\\FunFile.txt"
+00007FFCF4B31EBB | FF15 47110000            | call qword ptr ds:[<CreateFileW>]       |
+00007FFCF4B31EC1 | 48:8BC8                  | mov rcx,rax                             | rcx:"MZђ", rax:EntryPoint
+00007FFCF4B31EC4 | 48:83F8 FF               | cmp rax,FFFFFFFFFFFFFFFF                | rax:EntryPoint
+00007FFCF4B31EC8 | 74 4C                    | je unknowndll.7FFCF4B31F16              |
+00007FFCF4B31ECA | 0F1005 FF120000          | movups xmm0,xmmword ptr ds:[7FFCF4B331D | 00007FFCF4B331D0:"Hello from analyzed DLL!"
+00007FFCF4B31ED1 | 0FB605 10130000          | movzx eax,byte ptr ds:[7FFCF4B331E8]    |
+00007FFCF4B31ED8 | 4C:8D4C24 40             | lea r9,qword ptr ss:[rsp+40]            |
+00007FFCF4B31EDD | 41:B8 19000000           | mov r8d,19                              |
+00007FFCF4B31EE3 | 884424 60                | mov byte ptr ss:[rsp+60],al             |
+00007FFCF4B31EE7 | 0F114424 48              | movups xmmword ptr ss:[rsp+48],xmm0     |
+00007FFCF4B31EEC | 48:8D5424 48             | lea rdx,qword ptr ss:[rsp+48]           |
+00007FFCF4B31EF1 | 895C24 40                | mov dword ptr ss:[rsp+40],ebx           |
+00007FFCF4B31EF5 | F2:0F1005 E3120000       | movsd xmm0,qword ptr ds:[7FFCF4B331E0]  | 00007FFCF4B331E0:"zed DLL!"
+00007FFCF4B31EFD | F2:0F114424 58           | movsd qword ptr ss:[rsp+58],xmm0        |
+00007FFCF4B31F03 | 48:895C24 20             | mov qword ptr ss:[rsp+20],rbx           |
+00007FFCF4B31F08 | FF15 F2100000            | call qword ptr ds:[<WriteFile>]         |
+00007FFCF4B31F0E | 85C0                     | test eax,eax                            |
+00007FFCF4B31F10 | 0F85 85000000            | jne unknowndll.7FFCF4B31F9B             |
+00007FFCF4B31F16 | FF15 F4100000            | call qword ptr ds:[<GetLastError>]      |
+00007FFCF4B31F1C | 48:8B4C24 68             | mov rcx,qword ptr ss:[rsp+68]           |
+00007FFCF4B31F21 | 48:33CC                  | xor rcx,rsp                             |
+00007FFCF4B31F24 | E8 E7F0FFFF              | call unknowndll.7FFCF4B31010            |
+00007FFCF4B31F29 | 48:83C4 70               | add rsp,70                              |
+00007FFCF4B31F2D | 5B                       | pop rbx                                 |
+00007FFCF4B31F2E | C3                       | ret                                     |
+00007FFCF4B31F2F | 48:8D0D BA120000         | lea rcx,qword ptr ds:[7FFCF4B331F0]     | rcx:"MZђ", 00007FFCF4B331F0:L"C:\\RandomFile.txt"
+00007FFCF4B31F36 | FF15 CC100000            | call qword ptr ds:[<CreateFileW>]       |
+00007FFCF4B31F3C | 48:83F8 FF               | cmp rax,FFFFFFFFFFFFFFFF                | rax:EntryPoint
+00007FFCF4B31F40 | 74 D4                    | je unknowndll.7FFCF4B31F16              |
+00007FFCF4B31F42 | 0F1005 CF120000          | movups xmm0,xmmword ptr ds:[7FFCF4B3321 | 00007FFCF4B33218:"There's nothing to see!"
+00007FFCF4B31F49 | 4C:8D4C24 40             | lea r9,qword ptr ss:[rsp+40]            |
+00007FFCF4B31F4E | 895C24 40                | mov dword ptr ss:[rsp+40],ebx           |
+00007FFCF4B31F52 | 41:B8 18000000           | mov r8d,18                              |
+00007FFCF4B31F58 | 48:895C24 20             | mov qword ptr ss:[rsp+20],rbx           |
+00007FFCF4B31F5D | 0F114424 48              | movups xmmword ptr ss:[rsp+48],xmm0     |
+00007FFCF4B31F62 | 48:8D5424 48             | lea rdx,qword ptr ss:[rsp+48]           |
+00007FFCF4B31F67 | 48:8BC8                  | mov rcx,rax                             | rcx:"MZђ", rax:EntryPoint
+00007FFCF4B31F6A | F2:0F1005 B6120000       | movsd xmm0,qword ptr ds:[7FFCF4B33228]  | 00007FFCF4B33228:"to see!"
+00007FFCF4B31F72 | F2:0F114424 58           | movsd qword ptr ss:[rsp+58],xmm0        |
+00007FFCF4B31F78 | FF15 82100000            | call qword ptr ds:[<WriteFile>]         |
+00007FFCF4B31F7E | 85C0                     | test eax,eax                            |
+00007FFCF4B31F80 | 75 19                    | jne unknowndll.7FFCF4B31F9B             |
+00007FFCF4B31F82 | FF15 88100000            | call qword ptr ds:[<GetLastError>]      |
+00007FFCF4B31F88 | 48:8B4C24 68             | mov rcx,qword ptr ss:[rsp+68]           |
+00007FFCF4B31F8D | 48:33CC                  | xor rcx,rsp                             |
+00007FFCF4B31F90 | E8 7BF0FFFF              | call unknowndll.7FFCF4B31010            |
+00007FFCF4B31F95 | 48:83C4 70               | add rsp,70                              |
+00007FFCF4B31F99 | 5B                       | pop rbx                                 |
+00007FFCF4B31F9A | C3                       | ret                                     |
 #+end_src

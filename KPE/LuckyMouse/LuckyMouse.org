@@ -1,3 +1,6 @@
+:PROPERTIES:
+:ID:       c9e47c78-f735-43aa-a5e9-78b1ffc5e977
+:END:
 #+title: LuckyMouse
 
 CRYPT32.dll ??

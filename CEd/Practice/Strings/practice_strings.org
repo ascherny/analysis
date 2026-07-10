@@ -185,7 +185,10 @@ int __fastcall main(int argc, const char **argv, const char **envp)
 .data:000000000000407F                 db  70h ; p
 #+end_src
 
-* AES :cipher:aes:
+* AES :aes:
+:PROPERTIES:
+:ID:       5069c6db-50b2-42f6-97ab-220481d873b8
+:END:
 Работает раундами шифруя блоки
 Размер блока AES = 128 бит = 16 байт (всегда, независимо от длины ключа)
 Длина ключа: 128/192/256 бит
