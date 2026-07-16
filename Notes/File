@@ -1,0 +1,63 @@
+Есть знаменитая фраза: в Linux все есть файл
+Что такое файл?
+
+Сам файл не является единым файлом и подойти к нему можно с разныз сторон
+
+ Структура struct file которая обладает параметрами позиции записи loff_t f_pos, флаги открытия unsigned_int f_flags,
+режимы доступа f_mode_t f_mode, прочими параметрами и указателем на inode struct inode *f_inode
+
+ От этой точки можно пойти в две стороны как минимум
+
+ Файловый дескриптор - связь процесса и файла, файловый дескриптор это число int уникальное в рамках процесса,
+ хранимое в таблице файловых дескрипторов процесса, эта таблица - массив указателей где индексом как раз и является возвращаемое число
+ а элементом под этим индексом является указатель на struct file
+
+ inode - связь файловой системы и файла - inode еще одна структура которая описывает метаинформацию файла на более высоком уровне абстракции
+ права, время модификации, размер - то что мы видим в ls, указатели на блоки данных на диске и это уже сущность файловой системы
+ даже если не будет существовать процесса связанного с файлом инод будет существовать пока на него есть хоть один hard link
+ счетчик хардлинков лежит в inode
+ inode в первую очередь хранится на диске в inode table, в ram места не занимает
+
+
+struct file {
+	spinlock_t			f_lock;
+	fmode_t				f_mode;
+	const struct file_operations	*f_op;
+	struct address_space		*f_mapping;
+	void				*private_data;
+	struct inode			*f_inode;
+	unsigned int			f_flags;
+	unsigned int			f_iocb_flags;
+	const struct cred		*f_cred;
+	struct fown_struct		*f_owner;
+	/* --- cacheline 1 boundary (64 bytes) --- */
+	union {
+		const struct path	f_path;
+		struct path		__f_path;
+	};
+	union {
+		/* regular files (with FMODE_ATOMIC_POS) and directories */
+		struct mutex		f_pos_lock;
+		/* pipes */
+		u64			f_pipe;
+	};
+	loff_t				f_pos;
+#ifdef CONFIG_SECURITY
+	void				*f_security;
+#endif
+	/* --- cacheline 2 boundary (128 bytes) --- */
+	errseq_t			f_wb_err;
+	errseq_t			f_sb_err;
+#ifdef CONFIG_EPOLL
+	struct hlist_head		*f_ep;
+#endif
+	union {
+		struct callback_head	f_task_work;
+		struct llist_node	f_llist;
+		struct file_ra_state	f_ra;
+		freeptr_t		f_freeptr;
+	};
+	file_ref_t			f_ref;
+	/* --- cacheline 3 boundary (192 bytes) --- */
+} __randomize_layout
+  __attribute__((aligned(4)));	/* lest something weird decides that 2 is OK */

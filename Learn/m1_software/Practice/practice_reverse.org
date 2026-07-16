@@ -561,4 +561,4 @@ int EVP_EncryptInit_ex(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *cipher,
 
 **** Вопрос без ответа
 - в ходе 3.1 IDA подхватила структуру sockaddr в первоначальной функции, но я не понял как и в какой момент
-- __writefsdword(0xFFFFFFB0, ...) — это паттерн записи в errno через thread-local storage (на Linux errno часто реализован именно так, через FS-сегмент). А 0x61 = 97 в десятичном.  errno.h любой Linux-системы, 97 это код ошибки EAFNOSUPPORT ("Address family not supported").
+- __writefsdword(0xFFFFFFB0, ...) - это паттерн записи в errno через thread-local storage (на Linux errno часто реализован именно так, через FS-сегмент). А 0x61 = 97 в десятичном.  errno.h любой Linux-системы, 97 это код ошибки EAFNOSUPPORT ("Address family not supported").

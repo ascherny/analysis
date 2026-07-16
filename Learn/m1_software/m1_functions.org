@@ -145,7 +145,7 @@ ABI (Application Binary Interface), calling convention - одна из част�
   Концепция что каждая функция управляет своим фреймом
   #+begin_src asm
   caller:
-;       (почти всегда без стека — аргументы в регистрах)
+;       (почти всегда без стека - аргументы в регистрах)
       bl func
   callee:
       sub sp, N      ; выделил свой frame

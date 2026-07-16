@@ -157,7 +157,7 @@ if (fdwReason == DLL_PROCESS_ATTACH) {
     payload();
 }
 #+end_src
-DllMain — это:
+DllMain - это:
 callback от Windows loaderа
 ** Разобраться
 *** PDB файлы :qm:

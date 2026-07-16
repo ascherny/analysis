@@ -1,0 +1,106 @@
+#+title: M2 Analyze
+
+* Минимальный набор перед анализом
+Архитектура процессора - ARM, MIPS, x86, RISC-V и другие.
+Структура памяти - расположение загрузчика, ядра, файловой системы и данные
+Точка входа - адрес, с которого начинается выполнение кода.
+
+* Определение базового адреса загрузки
+
+- Binbloom - анализирует частоту встречаемости адресов и предсказывает смещение.
+- BaseFind - ищет указатели в коде и вычисляет базовый адрес статистически.
+- Ручной анализ - поиск в HEX-редакторе адресов, которые выглядят как указатели (например, 0x80001000).
+
+* Примитивы RTOS/bare-metal
+- RTOS
+Идем из common sense: должен выполняться некий код -> задачи/потоки, должен быть обмен информацинй -> i/o, мьютексы, очереди, это должно где-то храниться - память
+
++ Характерные параметры задачи - указатель на основную функцию, имя (для rtos характерен приоритет) и подобные параметры
+#+begin_src C
+// FreeRTOS
+xTaskCreate(vNetworkTask, "Net", 1024, NULL, 4, NULL);
+
+// ThreadX
+// Здесь: "App Server Thread" - название, nx_server_thread_entry - основная функция, pointer - указатель на стек
+ret = tx_thread_create(&AppServerThread, "App Server Thread", nx_server_thread_entry, 0, pointer, 2 * DEFAULT_MEMORY_SIZE,  DEFAULT_PRIORITY, DEFAULT_PRIORITY, TX_NO_TIME_SLICE, TX_DONT_START);
+#+end_src
+
++ Семафоры/Мьютексы обычно реализуются паттернами
+  + Создание семафора (мьютекса) и размещение его дескриптора в глобальной памяти.
+  + Переключение семафора/блокировка мьютекса перед критическим кодом или в начале функции.
+  + Обратное переключение семафора/разблокировка мьютекса после критического кода или в конце функции.
+#+begin_src C
+// FreeRTOS (двоичный семафор)
+SemaphoreHandle_t adc_sem = xSemaphoreCreateBinary();
+xSemaphoreTake(smphrHandle, portMAX_DELAY);
+txStatus = xSemaphoreGiveFromISR(smphrHandle, &xHigherPriorityTaskWoken);
+
+// ThreadX (счетный семафор)
+TX_SEMAPHORE file_sem;
+tx_semaphore_create(&file_sem, "File Access", 3);
+tx_semaphore_get(&file_sem, TX_WAIT_FOREVER);
+tx_semaphore_put(&file_sem);
+// FreeRTOS
+SemaphoreHandle_t can_mutex = xSemaphoreCreateMutex();
+xSemaphoreTake(can_mutex, portMAX_DELAY);
+xSemaphoreGive(can_mutex);
+
+// ThreadX
+TX_MUTEX spi_mutex;
+tx_mutex_create(&spi_mutex, "SPI Mutex", TX_INHERIT);
+tx_mutex_get(&spi_mutex, TX_WAIT_FOREVER);
+tx_mutex_put(&spi_mutex);
+#+end_src
+
++ Очереди сообщений
+  + Создание очереди и размещение ее дескриптора в глобальной области памяти.
+  + Функция-отправитель в конце своей работы размещает сообщение, используя указанный дескриптор.
+  + Функция-обработчик в начале своей работы извлекает сообщение, используя указанный дескриптор.
+
+#+begin_src C
+// FreeRTOS
+// Здесь 5 — размер очереди
+QueueHandle_t cmd_queue = xQueueCreate(5, sizeof(command_t));
+xQueueSend(cmd_queue, &cmd, 0);
+...
+xQueueReceive(cmd_queue, &cmd, 500);
+
+// ThreadX
+TX_QUEUE RoutineQueue;
+tx_queue_create(&RoutineQueue, "RoutineQueue", MESSAGE_SIZE, RoutineQueue_ptr, QUEUE_SIZE);
+tx_queue_send(&RoutineQueue, &DispatcherMessage, TX_WAIT_FOREVER);
+...
+tx_queue_receive(&RoutineQueue, &RoutineMessage, TX_WAIT_FOREVER);
+#+end_src
+
++ Примой доступ к I/O
+  Взаимодействие с переферией по протоколам происходит через регистры отображаемые в адресное пространство
+  Регистры в данном случае это область памяти связанная с конкретным устройством
+Работа с периферией включает в себя:
+- Конфигурацию регистров: установку режимов работы, скоростей, прерываний.
+- Чтение состояний: проверку флагов готовности данных/устройств.
+- Запись данных: непосредственную передачу в регистры данных.
+- Обработку прерываний: реакцию на аппаратные события.
+
+Например, в STM32F4:
+- APB1/APB2 шины: периферия с разными скоростями;
+- 0x40000000-0x5FFFFFFF: диапазон периферийных регистров;
+- GPIOA: базовый адрес 0x40020000;
+- USART1: базовый адрес 0x40011000.
+
+
+** UART пример
+
+#+begin_src C
+UART_HandleTypeDef huart1;            // 1. Дескриптор UART
+MX_USART1_UART_Init();                // 2. Функция инициализации
+
+uint8_t rx_buf[10] = {0};             // Буфер для приёма (10 байт)
+uint8_t tx_buf[10] = {0};             // Буфер для передачи (10 байт)
+
+// 3. Отправить 10 байт из tx_buf через UART с таймаутом 100 мс
+HAL_UART_Transmit(&huart1, tx_buf, 10, 100);
+
+// 4. Принять 10 байт в rx_buf с таймаутом 5000 мс
+HAL_UART_Receive(&huart1, rx_buf, 10, 5000);
+#+end_src

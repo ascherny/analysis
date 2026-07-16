@@ -1,0 +1,229 @@
+#+title: M2 Archive
+
+текстовые и другие структурированные данные имеют низкую энтропию;
+исполняемый код - среднюю;
+сжатые или зашифрованные данные - высокую
+
+В прошивках часто используются следующие алгоритмы:
+
+gzip (deflate) - один из самых популярных алгоритмов сжатия, особенно для ядер Linux. Имеет сигнатуру 1F 8B и легко распаковывается утилитой gunzip;
+LZMA / LZMA2 / xz - алгоритмы с высокой степенью сжатия, используются в squashfs, OpenWRT и других embedded-системах. Отличаются эффективностью, но требуют больше ресурсов;
+LZO - быстрый, но не такой эффективный, применяется в операционных системах реального времени, UBI;
+bzip2 - даёт хорошее сжатие, но относительно медленный. Используется в старых прошивках и некоторых Linux-дистрибутивах.
+
+
+Прошивки часто используют сжатие для экономии места в памяти.
+** LZMA :lzma:
+00000000  5d 00 00 80 00 ff ff ff  ff ff ff ff ff 00 29 1b  |].............).|
+Здесь:
+
+5d - свойства LZMA;
+00 00 80 00 - размер словаря (0x0080_0000);
+ff ff ff ff ff ff ff ff - размер несжатых данных (обычно заполняется 0xFF, если неизвестен).
+
+Это типичный заголовок файла, сжатого с помощью LZMA. Из него мы можем узнать параметры кодирования и размер словаря.
+
+Чтобы распаковать такой файл, нужно выполнить следующие команды:
+
+#+begin_src shell
+lzma -d -c compressed.lzma > uncompressed.bin
+#+end_src
+или
+#+begin_src shell
+python -m lzma -d < compressed.bin > uncompressed.bin
+#+end_src
+
+пример перебора свойств LZMA для декомпрессии файла, сжатого методом LZMA, без заголовка:
+
+#+begin_src python
+import lzma
+import struct
+
+def try_lzma_variations(compressed_data):
+    """Пытается разные варианты параметров LZMA"""
+    # Возможные варианты свойств LZMA
+    props_variants = [
+        b'\x5D',  # наиболее распространенный
+        b'\x5E',
+        b'\x5F',
+        b'\x00',
+        b'\x01'
+    ]
+
+    # Варианты размеров словаря
+    dict_sizes = [
+        4096,     # минимальный
+        8192,
+        16384,
+        32768,
+        65536,
+        131072,
+        262144,
+        1048576,  # 1MB
+        8388608   # 8MB (часто используется)
+
+    ]
+
+    for prop in props_variants:
+        for dict_size in dict_sizes:
+            try:
+                # Формируем кастомный заголовок LZMA
+                header = prop + struct.pack( "<I", dict_size) + b'\xFF'*8
+                full_data = header + compressed_data[13:]  # Пропускаем стандартный заголовок
+                decomp = lzma.LZMADecompressor(lzma.FORMAT_AUTO, None, None)
+                decompressed = decomp.decompress(full_data)
+                print(f"Успех с параметрами: свойства={prop.hex()}, dict_size={dict_size}")
+                return decompressed
+            except lzma.LZMAError as e:
+                print(e)
+                continue
+    return None
+
+# Пример использования
+with open('compressed_fw.bin', 'rb') as f:
+    data = f.read()
+    print("Пробуем варианты LZMA...")
+    result = try_lzma_variations(data)
+#+end_src
+
+** GZIP :gzip:
+
+Простая распаковка
+
+#+begin_src shell
+gzip -d -c firmware.gz > firmware.bin
+#+end_src
+
+Когда gzip-поток находится внутри файла
+#+begin_src shell
+dd if=combined.bin bs=1 skip=128 | gzip -d > kernel.img
+#+end_src
+** XZ :xz:
+#+begin_src shell
+unxz -c firmware.xz > firmware.bin
+#+end_src
+** bzip2 :bzip2:
+#+begin_src shell
+bzip2 -d -c firmware.bz2 > output.bin
+#+end_src
+** Универсальный скрипт
+#+begin_src python
+import lzma
+import gzip
+import bz2
+import magic
+from io import BytesIO
+
+def try_decompress(data):
+    """Пытается распаковать данные разными методами"""
+    # Список форматов и соответствующих функций
+    formats = [
+        ('lzma', lzma.decompress),
+        ('gzip', gzip.decompress),
+        ('bz2', bz2.decompress),
+        ('raw', lambda x: x)  # на случай несжатых данных
+    ]
+
+    for name, decompressor in formats:
+        try:
+            result = decompressor(data)
+            print(f"Успешно распаковано как {name}")
+            return result, name
+        except (lzma.LZMAError, gzip.BadGzipFile, bz2.BZ2Error):
+            continue
+
+    print("Не удалось определить формат сжатия")
+    return None, None
+
+# Пример использования с файлом
+with open('firmware.bin', 'rb') as f:
+    data = f.read()
+
+decompressed, format_used = try_decompress(data)
+if decompressed:
+    with open('firmware_unpacked.bin', 'wb') as f:
+        f.write(decompressed)
+def detect_compression_type(data):
+    """Определяет тип сжатия по сигнатурам"""
+    magic_dict = {
+        b'\xFD7zXZ\x00': 'xz',
+        b'\x1F\x8B\x08': 'gzip',
+        b'BZh': 'bz2',
+        b'\x5D\x00': 'lzma',
+        b'\x04\x22\x4D\x18': 'lz4',
+        b'\x89LZO': 'lzo'
+    }
+
+    for signature, ctype in magic_dict.items():
+        if data.startswith(signature):
+            return ctype
+
+    # Проверка через magic
+    mime = magic.from_buffer(data, mime=True)
+    if 'gzip' in mime:
+        return 'gzip'
+    elif 'xz' in mime:
+        return 'xz'
+
+    return 'unknown'
+
+# Пример использования
+compression_type = detect_compression_type(data)
+print(f"Тип сжатия: {compression_type}")
+
+#+end_src
+
+
+* Алгоритм
+1. Получить файл прошивки
+2. Проанализировать его стандартными утилитами: strings, file
+3. Получить информацию об энтропии, понять примерное содержимое файла
+4. С помощью binwalk определить наличие внутри множества Flattened device tree и файлов
+5. Извлечь их вручную или с помощью подходящих утилит (например, binwalk)
+   - Запустить file, xxd, binwalk, strings и другие утилиты.
+   - Оценить структуру: есть ли видимые сегменты, файловые системы, загрузчик.
+   - Проверить энтропию: определить, сжато или зашифровано содержимое, какие части.
+   - Извлечь сжатые блоки и проанализировать содержимое.
+   - Учесть возможные ошибки считывания и структуру хранения данных в памяти.
+
+
+* Пример
+
+binwalk
+
+DECIMAL       HEXADECIMAL     DESCRIPTION
+------------------------------------------------------------------------------ --
+112           0x70            Unix path: /dev/mtdblock/1
+160           0xA0            LZMA compressed data, properties: 0x5D, dictionary size: 8388608 bytes, uncompressed size: 2867712 bytes
+983200        0xF00A0         PackImg section delimiter tag, little endian size: 15761152 bytes; big endian size: 8384512 bytes
+983232        0xF00C0         Squashfs filesystem, little endian, version 4.0, compression:lzma, size: 8383113 bytes, 1090 inodes, blocksize: 131072 bytes, created: 2019-08-05 03:23:03
+
+1. Извлечь первый блок сжатых данных
+      #+begin_src shell
+      dd if=DAP-2695_firmware_v2.00r131.bin of=data.lz bs=1 skip=160 count=983040
+      lzma < data.lz > data.bin
+      #+end_src
+2. Извлечь и распаковать SquashFS:
+#+begin_src shell
+    dd if=DAP-2695_firmware_v2.00r131.bin of=rootfs.squashfs bs=1 skip=983232 count=8383113
+    unsquashfs rootfs.squashfs -d extracted_fs
+#+end_src
+
+Или извлечь все через binwalk
+
+#+begin_src shell
+user@pc:/home/user/course/part4$ binwalk -e DAP-2695_firmware_v2.00r131.bin
+...
+user@pc:/home/user/course/part4$ ls _DAP-2695_firmware_v2.00r131.bin.extracted/
+A0  A0.7z  F00C0.squashfs  squashfs-root  squashfs-root-0
+#+end_src
+
+
+
+** dd :dd:cheatsheet:
+| Параметр     | Значение                                                                    |
+| if=          | Input File - откуда читаем (исходный файл прошивки)                         |
+| of=          | Output File - куда пишем (временный файл data.lz)                           |
+| bs=1         | Block Size - размер одного блока чтения/записи = 1 байт (побайтовый режим)  |
+| skip=160     | Пропустить 160 байт от начала входного файла и начать чтение с 161-го байта |
+| count=983040 | Прочитать ровно 983 040 байт (это 960 КБ)                                   |
