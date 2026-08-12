@@ -104,3 +104,78 @@ HAL_UART_Transmit(&huart1, tx_buf, 10, 100);
 // 4. Принять 10 байт в rx_buf с таймаутом 5000 мс
 HAL_UART_Receive(&huart1, rx_buf, 10, 5000);
 #+end_src
+
+
+#+begin_src C
+huart->Instance = USART2;                             // Какой аппаратный UART используем (USART2)
+huart->Init.BaudRate = 115200;                        // Скорость 115200 бит/с
+huart->Init.WordLength = UART_WORDLENGTH_8B;          // 8 бит данных
+huart->Init.StopBits = UART_STOPBITS_1;               // 1 стоп-бит
+huart->Init.Parity = UART_PARITY_NONE;                // Без контроля чётности
+huart->Init.Mode = UART_MODE_TX_RX;                   // Полный дуплекс (и приём, и передача)
+huart->Init.HwFlowCtl = UART_HWCONTROL_NONE;          // Без аппаратного управления потоком (RTS/CTS)
+huart->Init.OverSampling = UART_OVERSAMPLING_16;      // 16-кратная дискретизация (стандарт)
+#+end_src
+
+
+** Таймеры
+
+Иногда может быть неясно, что стало причиной запуска той или иной функции в прошивке. В таких случаях стоит поискать связанные с ними таймеры.
+запуск таймера зачастую требует имя, указатель на функцию-обработчик и числовые параметры
+
+#+begin_src C
+// FreeRTOS
+TimerHandle_t  xExampleSoftwareTimer = xTimerCreate(( const char * ) "LEDTimer", 500, pdTRUE, ( void * ) 0, led_timer_callback );
+xTimerStart( xExampleSoftwareTimer, 0 );
+
+// ThreadX
+TX_TIMER led_timer;
+tx_timer_create(&led_timer, "led_timer", led_timer_callback, 0x1234, 200, 200, TX_AUTO_ACTIVATE);
+
+#+end_src
+
+** Примитивы Linux-подобных систем
+- U-Boot: окружение загрузки
+#+begin_src shell
+> printenv
+bootcmd=mmc dev 0; ext4load mmc 0:1 0x82000000 zImage; bootz 0x82000000
+bootargs=console=ttymxc0,115200 root=/dev/mmcblk0p2 rootwait
+#+end_src
+
+- Systemd: управление сервисами
+  хорошая точка входа для определения полезной нагрузки прошивки.
+
+Пример VPN-шлюза:
+#+begin_src shell
+# /etc/systemd/system/wireguard.service
+[Unit]
+Requires=network.target
+After=firewall.service
+
+[Service]
+ExecStartPre=/usr/bin/wg genkey > /etc/wg/private.key
+ExecStart=/usr/bin/wg-quick up wg0
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+#+end_src
+
+- Fstab: монтирование ФС
+
+файл /etc/fstab. В нем определяются точки монтирования и параметры файловых систем.
+
+Пример:
+
+#+begin_src shell
+/dev/mmcblk0p1  /          ext4  ro,noatime,errors=remount-ro  0 1
+/dev/mmcblk0p2  /media     ext4  rw,noexec,data=journal        0 2
+tmpfs           /tmp       tmpfs size=64M,mode=1777             0 0
+#+end_src
+
+* Алгоритм
+Определяем тип прошивки. Если это RTOS/Bare-Metal, выполняем все предварительные шаги и загружаем прошивку в дизасм:
+- идентифицируем периферию с помощью SVD (или других доступных источников);
+- определяем основные примитивы: задачи, очереди, примитивы синхронизации, управление памятью, таймеры;
+- идем от обратного: находим доступы к периферии, определяем соответствующие функции чтения/записи/настройки. Изолируем эту логику, чтобы исследовать только интересующие нас части прошивки.
+Иначе: анализируем файловую систему, ищем приложения, реализующие бизнес-логику:

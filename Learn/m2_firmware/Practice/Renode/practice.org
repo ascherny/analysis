@@ -1,0 +1,47 @@
+#+title: Practice
+
+Renode эмулятор
+
+1. Описать машину
+   в нашем случае STM32F103
+
+   описание состоит из двух файлов
+   .repl (platform description) - статическое описание железа
+   .resc (script) - сценарий действий
+
+
+
+
+examples:
+1:
+#+begin_src shell
+using sysbus
+mach create "stm32f103"
+machine LoadPlatformDescription @platforms/boards/stm32f103c8.repl
+
+sysbus LoadBinary @firmware.bin 0x08000000
+
+start
+#+end_src
+
+2:
+#+begin_src shell
+emulation CreateServerSocketTerminal 12345 "term" false # false это emitConfigBytes: telnet-handshake
+mach create
+machine LoadPlatformDescription @platforms/cpus/stm32f103.repl
+sysbus.cpu VectorTableOffset   0x8000000
+sysbus LoadBinary @d:/firmware.bin 0x8000000
+connector Connect sysbus.usart1 term
+machine StartGdbServer 3333
+
+###
+
+arm-none-eabi-gdb Learn/m2_firmware/Practice/Renode/firmware.bin
+target remote :3333
+continue
+
+###
+
+user@compucter Analysis % python3 Learn/m2_firmware/Practice/Renode/connect.py
+Received b'Hello from STM32 Renode!\x00'
+#+end_src

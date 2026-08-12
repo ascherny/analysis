@@ -1,0 +1,36 @@
+#+title: M2 Dynamic
+
+* Пример
+
+пример инициализации и выполнения функции check_password из дампа прошивки firmware.bin
+мы уже знаем и архитектуру, и адресацию внутри кода. Также нам известно, что пароль хранится по адресу 0x20000200, а результат работы функции находится в регистре R0
+
+#+begin_src python
+from unicorn import Uc, UC_ARCH_ARM, UC_MODE_THUMB
+
+with open("firmware.bin", "rb") as firmware_fd, open("passwords.txt", 'r') as passwords_fd :
+
+    # Считывание файла прошивки
+    firmware_data = firmware_fd.read()
+
+    # Инициализация эмулятора для Cortex-M
+    mu = Uc(UC_ARCH_ARM, UC_MODE_THUMB)                     # Создаем объект Uc, указываем архитектуру и набор команд
+    mu.mem_map(0x08000000, 0x20000)                         # Создаем регион Flash памяти STM32F103
+    mu.mem_write(0x08000000, firmware_data)                 # Записываем туда данные прошивки
+    mu.mem_map(0x20000000, 0x1000)                          # Создаем регион оперативной памяти RAM
+
+    # Эмуляция функции проверки пароля и перебор значений
+    for password in passwords_fd.readlines():
+
+        mu.reg_write(UC_ARM_REG_SP, 0x20001000)             # Инициализируем указатель на стек
+        mu.mem_write(0x20000200, password.encode('utf-8'))  # Сохраняем новый пароль в памяти эмулятора
+        mu.reg_write(UC_ARM_REG_R0, 0x20000200)             # Записываем его адрес как параметр функции
+        mu.emu_start(0x08001234 + 1, 0x08001500)            # Запускаем выполнение функции check_password
+
+        # Анализ результата
+        if mu.reg_read(UC_ARM_REG_R0) == 1:                 # Проверяем значение в регистре
+            print("Correct password: {}".format(password))
+            break
+
+#+end_src
+

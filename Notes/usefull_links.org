@@ -11,6 +11,8 @@
 * [[https://greatscottgadgets.com/][Greatscottgadgets: open source tools for innovative people]]
 * [[https://dissec.to/tech/hardware-reverse-engineering-101/][Hardware Reverse Engineering 101: Basics of the board]]
 * [[https://voidstarsec.com/blog/uart-uboot-and-usb][Intro to Embedded RE: UART Discovery and Firmware Extraction via UBoot]]
+* [[https://www.freertos.org/Documentation/02-Kernel/02-Kernel-features/09-Memory-management/01-Memory-management][FreeRTOS heap memory management]]
+* [[https://kakaroto.ca/2019/11/exploiting-intels-management-engine-part-1-understanding-pts-txe-poc/][PTKAkakro]]
 
 
 
