@@ -1,0 +1,19 @@
+#+title: Tcc
+
+lldb функция main для tcc_tests
+#+begin_src
+Process 53005 launched: '/Users/ascher/Work/Analysis/CVE/practice/TestTCC.app/Contents/MacOS/TestTCC' (arm64)
+Process 53005 stopped
+* thread #1, queue = 'com.apple.main-thread', stop reason = breakpoint 1.1
+       frame #0: 0x0000000100000800 TestTCC`main
+TestTCC`main:
+->  0x100000800 <+0>:  sub    sp, sp, #0x50
+    0x100000804 <+4>:  stp    x29, x30, [sp, #0x40]
+    0x100000808 <+8>:  add    x29, sp, #0x40
+    0x10000080c <+12>: mov    w8, #0x0 ; =0
+Target 0: (TestTCC) stopped.
+(lldb) bt
+* thread #1, queue = 'com.apple.main-thread', stop reason = breakpoint 1.1
+   * frame #0: 0x0000000100000800 TestTCC`main
+
+#+end_src

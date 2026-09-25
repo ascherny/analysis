@@ -2,28 +2,48 @@
 
 * Инструкция к инструкциям :asm:instructions:
 
-r - операнд может быть регистром
+r - операнд, может быть регистром
 m - адрес в памяти
 XX - размер операнда
 
 ** Перемещение данных
 
 | Операция            | x86            | ARM                       | RISC-V                         |
-| Скопировать r1 → r2 | mov r2, r1     | mov x2, x1 (alias)        | addi x2, x1, 0                 |
-| Push register       | push eax       | stp x29, x30, [sp, #-16]! | addi sp, sp, -8``sd x1, 0(sp)  |
+| Скопировать r1 → r2 | mov r2, r1     | mov x2, x1 (alias)[fn:1]  | addi x2, x1, 0                 |
+| Push register       | push eax       | stp x29, x30, [sp, #-16]![fn:2] | addi sp, sp, -8``sd x1, 0(sp)  |
 | Push multiple       | pusha (legacy) | stp x1, x2, [sp, #-16]!   | Нужно делать руками            |
 | Pop register        | pop eax        | ldp x29, x30, [sp], #16   | ld x1, 0(sp) \n addi sp, sp, 8 |
 | Pop multiple        | popa (legacy)  | ldp x1, x2, [sp], #16     | Нужно делать руками            |
 |                     |                |                           |                                |
 
+[fn:1] ARM перевращает mov x2, x1 в orr x2, xzr, x1, а также mov x0, sp -> add x0, sp, #0
+
+[fn:2] ! Вычисляет и применят и применяет значение, сейчас
+#+begin_src asm
+sp = sp - 16
+memory[sp]     = x29
+memory[sp + 8] = x30
+#+end_src
+А без ! sp бы не изменился
+
+Работа с парами:
+STP и LDP работают именно с двумя соседними 64-битными словами памяти
+stp x29, x30, [sp, #-16]!
+заполняем стек из регистров
+[SP + 0] = x29
+[SP + 8] = x30
+ldp x29, x30, [sp], #16
+регистры из стека
+x29 = [SP + 0]
+x30 = [SP + 8]
+
 ** Аримфметические и логические инструкции
 
-| Операция | x86                  | ARM            | RISC-V         | Note                     |
-| AND      | and r3, r1           | and x3, x1, x2 | and x3, x1, x2 | Влияет на регистр флагов |
-| OR       | mov r3, r2 or r3, r1 | orr x3, x1, x2 | orr x3, x1, x2 | or dest, src             |
-| XOR      | xor r3, r1           | eor x3, x1, x2 | xor x3, x1, x2 |                          |
-| NOT      |                      |                |                |                          |
-|          |                      |                |                |                          |
+| Операция | x86        | ARM            | RISC-V         | Note                     |
+| AND      | and r3, r1 | and x3, x1, x2 | and x3, x1, x2 | Влияет на регистр флагов |
+| OR       | or r3, r1  | orr x3, x1, x2 | orr x3, x1, x2 | or dest, src             |
+| XOR      | xor r3, r1 | eor x3, x1, x2 | xor x3, x1, x2 |                          |
+| NOT      |            |                |                |                          |
 
 ** Условные переходы
 
@@ -38,7 +58,7 @@ XX - размер операнда
 * Push basics :asm:push:
 push eax использует несколько базовых операций
 
-Команда PUSH уменьшает значение регистра стека на размер операнда (2 или 4) и копирует содержимое операнда в память по адресу SS:SP
+Команда PUSH уменьшает значение регистра стека на размер операнда (2, 4, 8) и копирует содержимое операнда в память по адресу SS:SP[fn:3]
 
 #+begin_src asm
     ;push eax
@@ -55,8 +75,9 @@ esp = esp - 4
 
  В ARM эти инструкции выполняются буквально без сахара push
 
+[fn:3] Об эволюции обращений к инструкциям
+
 ** ARM
 #+begin_src asm
 str x0, [sp, #-8]!
 #+end_src
-

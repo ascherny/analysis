@@ -96,6 +96,9 @@ Org - формат для заметок.
 TAB
 
 ** Org Links
+
+C-c C-x f - футноты, сноски
+
 :PROPERTIES:
 :ID:       d73e6078-9b56-4041-818f-60d4e997827f
 :END:
@@ -184,6 +187,8 @@ C-c C-e
 ** Полезные хоткеи emacs :emacs:hotkey:
 SPC m i - создать список
 Shift+TAB - свернуть все выпадающие
+C-o в insetr моде дает выполнить команду в normal моде и вернуться
+в Visual Mode S->символ, например S* это surround
 * Elisp
 ** Разбор elisp :elisp:
 
