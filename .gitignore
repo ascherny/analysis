@@ -8,3 +8,4 @@ TODO
 *.nam
 *.til
 *.idb
+/Case/*sample.sh

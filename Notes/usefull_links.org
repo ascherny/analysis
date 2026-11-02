@@ -13,7 +13,8 @@
 * [[https://voidstarsec.com/blog/uart-uboot-and-usb][Intro to Embedded RE: UART Discovery and Firmware Extraction via UBoot]]
 * [[https://www.freertos.org/Documentation/02-Kernel/02-Kernel-features/09-Memory-management/01-Memory-management][FreeRTOS heap memory management]]
 * [[https://kakaroto.ca/2019/11/exploiting-intels-management-engine-part-1-understanding-pts-txe-poc/][PTKAkakro]]
-
+* [[https://www.first.org/cvss/calculator/3.1#CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H][Valnurability Calculator]]
+* [[https://www.cvedetails.com/cve/CVE-2021-3156/][CVE details]]
 
 
 

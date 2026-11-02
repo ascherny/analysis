@@ -1,0 +1,368 @@
+#+title: Module 0
+
+* prerq: [[https://www.shellcheck.net/][shellcheck]], [[https://github.com/patrickvane/shfmt][shfmt]]
+* стрим настроек :bash:
+#+begin_src shell :results output :prologue "exec 2>&1"
+shasum -a 256 sample.sh
+wc -l sample.sh
+bash -n sample.sh && echo "syntax"
+#+end_src
+
+#+RESULTS:
+: 57a25285eb4cb5823e28f43a4cf1ed13e0d69bb16fb2cd2b1868e72838d72fca  sample.sh
+:     1618 sample.sh
+: syntax
+
+#+begin_src shell :results output :prologue "exec 2>&1"
+rg -n '^[a-zA-Z_][a-zA-Z0-9_]*\(\) *\{' sample.sh
+#+end_src
+
+#+RESULTS:
+#+begin_example
+27:show_help() {
+167:ver() { echo "$@" | perl -lane 'printf "%d%03d%04d%05d\n", split(/\./, $_), (0)x4'; }
+168:ver_check() { (($(ver "${sxbVer}") > $(ver "1.1.0.0") && $(ver "${sxbVer}") < $(ver "${sxbLive}"))) && echo -e "${verCk2}"; }
+184:macos_requirements_check() {
+197:macos_set_version() {
+209:macos_legacy_notice() {
+216:macos_set_path() {
+242:macos_autoupdate_check() {
+250:macos_client_arch() {
+264:macos_prepare() {
+300:linux_client_variant() {
+318:linux_deb_prepare() {
+336:linux_no_client() {
+352:linux_resolve_client_path() {
+369:linux_search_path() {
+401:linux_set_path() {
+429:linux_prepare() {
+445:existing_client_ver() {
+465:client_version_output() {
+489:run_prepare() {
+513:check_write_permission() {
+541:sudo_run() {
+549:protected_stage_copy() {
+558:protected_stage_prepare() {
+589:protected_prepare_file() {
+604:protected_save_destination() {
+615:protected_restore_destination() {
+620:protected_remove_files() {
+627:protected_commit() {
+685:atomic_copy() {
+696:backup_spotx() {
+702:uninstall_spotx() {
+708:run_uninstall_check() {
+738:perlvar() {
+750:prepare_interactive_input() {
+773:read_yn() {
+789:run_interactive_check() {
+808:sudo_check() {
+822:cleanup_temp_dirs() {
+836:linux_working_dir() {
+850:linux_deb_install() {
+893:macos_client_install() {
+963:run_install_check() {
+970:macos_codesign() {
+984:run_cache_check() {
+997:final_setup_check() {
+1005:perlVar() {
+1024:xpui_detect() {
+1057:snapshot_check() {
+1109:xpui_open() {
+1151:run_core_start() {
+1161:run_patches() {
+1211:run_finish() {
+#+end_example
+
+#+begin_src shell :results output :prologue "exec 2>&1"
+i=1
+for f in $(rg -o '^[a-zA-Z_][a-zA-Z0-9_]*(?=\(\) *\{)' -P sample.sh); do
+  echo "$i: ==$f=="; rg -n "\b$f\b" sample.sh | rg -v "^[0-9]+:$f\(\)"
+  ((i++))
+done
+#+end_src
+
+#+RESULTS:
+#+begin_example
+1: ==show_help==
+106:        help) show_help; exit 0 ;;
+124:        *) echo -e "${red}Error:${clr} '--""${OPTARG}""' not supported\n\n$(show_help)\n" >&2; exit 1 ;;
+141:    \?) echo -e "${red}Error:${clr} '-""${OPTARG}""' not supported\n\n$(show_help)\n" >&2; exit 1 ;;
+142:    :) echo -e "${red}Error:${clr} '-""${OPTARG}""' requires additional argument\n\n$(show_help)\n" >&2; exit 1 ;;
+2: ==ver==
+168:ver_check() { (($(ver "${sxbVer}") > $(ver "1.1.0.0") && $(ver "${sxbVer}") < $(ver "${sxbLive}"))) && echo -e "${verCk2}"; }
+287:  [[ "${downloadVer}" ]] && (($(ver "${downloadVer}") < $(ver "1.1.59.710"))) && { echo -e "${red}Error:${clr} ${downloadVer} not supported by SpotX-Bash\n" >&2; exit 1; }
+475:  [[ "${installClient}" ]] && (($(ver "${downloadVer}") <= $(ver "${sxbVer}") && $(ver "${downloadVer}") > $(ver "0"))) && {
+478:  [[ "${installClient}" ]] && (($(ver "${downloadVer}") > $(ver "${sxbVer}"))) && {
+481:  (($(ver "${clientVer}") <= $(ver "${sxbVer}") && $(ver "${clientVer}") > $(ver "0"))) && {
+484:  (($(ver "${clientVer}") > $(ver "${sxbVer}"))) && {
+506:    (($(ver "${clientVer}") > $(ver "${legacyMaxVer}"))) && macos_legacy_notice "toohigh"
+800:    (($(ver "${clientVer}") >= $(ver "1.1.93.896") && $(ver "${clientVer}") <= $(ver "1.2.13.661"))) && { read_yn "Enable new home screen UI? " || oldUi='true'; }
+801:    (($(ver "${clientVer}") > $(ver "1.1.99.878"))) && { read_yn "Enable developer mode? " && devMode='true'; }
+802:    (($(ver "${clientVer}") >= $(ver "1.1.70.610"))) && { read_yn "Hide non-music categories on home screen? " && hideNonMusic='true'; }
+803:    (($(ver "${clientVer}") >= $(ver "1.2.0.1165"))) && { read_yn "Set lyrics background color to black? " && lyricsBg='true'; }
+1002:  [[ "${clientVer}" ]] && (($(ver "${clientVer}") < $(ver "1.1.59.710"))) && { echo -e "${red}Error:${clr} ${clientVer} not supported by SpotX-Bash\n" >&2; exit 1; }
+1009:    { { [[ -z "${a[5]}" ]] || (( $(ver "${clientVer}") >= $(ver "${a[5]}") )); } &&
+1010:      { [[ -z "${a[6]}" ]] || (( $(ver "${clientVer}") <= $(ver "${a[6]}") )); } &&
+1135:      (( $(ver "${clientVer}") < $(ver "1.1.59.710") )) && {
+1141:    [[ -z "${unknownVer+x}" ]] && (( $(ver "${clientVer}") <= $(ver "${sxbVer}") && $(ver "${clientVer}") > $(ver "0") )) && printf "\xE2\x9C\x94\x20\x44\x65\x74\x65\x63\x74\x65\x64\x20\x53\x70\x6F\x74\x69\x66\x79\x20${green}${clientVer}${clr}\n"
+1142:    [[ -z "${unknownVer+x}" ]] && (( $(ver "${clientVer}") > $(ver "${sxbVer}") )) && printf "\xE2\x9C\x94\x20\x44\x65\x74\x65\x63\x74\x65\x64\x20\x53\x70\x6F\x74\x69\x66\x79\x20${red}${clientVer}${clr}\n"
+1158:  (($(ver "${clientVer}") > $(ver "1.2.56.9999"))) && vendorXpuiJs="${xpuiJs}"
+1169:  [[ "${devMode}" ]] && (($(ver "${clientVer}") >= $(ver "1.1.84.716"))) && {
+1181:    (($(ver "${clientVer}") >= $(ver "1.1.93.896") && $(ver "${clientVer}") <= $(ver "1.2.13.661"))) && printf "\xE2\x9C\x94\x20\x45\x6E\x61\x62\x6C\x65\x64\x20\x6F\x6C\x64\x20\x55\x49\n"
+1182:    (($(ver "${clientVer}") > $(ver "1.2.13.661"))) && {
+1187:  [[ -z "${oldUi+x}" ]] && (($(ver "${clientVer}") >= $(ver "1.1.93.896"))) && {
+1189:    (($(ver "${clientVer}") <= $(ver "1.2.13.661"))) && printf "\xE2\x9C\x94\x20\x45\x6E\x61\x62\x6C\x65\x64\x20\x6E\x65\x77\x20\x55\x49\n"
+1191:  [[ "${hideNonMusic}" ]] && (($(ver "${clientVer}") >= $(ver "1.1.70.610"))) && {
+1193:    (($(ver "${clientVer}") >= $(ver "1.2.45.451"))) && printf '\n%s' "${hideSubfeed}" >> "${xpuiCss}"
+1197:    (($(ver "${clientVer}") >= $(ver "1.2.0.1165"))) && {
+1199:      (($(ver "${clientVer}") >= $(ver "1.2.45.454"))) && printf '\n%b' "${lyricsBackgroundNew}" >> "${xpuiCss}"
+3: ==ver_check==
+169:[[ "${verPrint}" ]] && { echo -e "SpotX-Bash version ${sxbVer}\n"; ver_check; exit 0; }
+508:  ver_check
+4: ==macos_requirements_check==
+274:  macos_requirements_check
+5: ==macos_set_version==
+275:  macos_set_version
+6: ==macos_legacy_notice==
+285:  [[ "${installMac}" && "${legacyMac}" ]] && macos_legacy_notice
+289:  [[ "${notInstalled}" && "${legacyMac}" ]] && macos_legacy_notice
+506:    (($(ver "${clientVer}") > $(ver "${legacyMaxVer}"))) && macos_legacy_notice "toohigh"
+792:    [[ "${platformType}" == "macOS" && "${legacyMac}" && "${notInstalled}" ]] && macos_legacy_notice
+7: ==macos_set_path==
+288:  macos_set_path
+8: ==macos_autoupdate_check==
+290:  macos_autoupdate_check
+9: ==macos_client_arch==
+1000:  [[ "${platformType}" == "macOS" ]] && macos_client_arch
+10: ==macos_prepare==
+490:  [[ "${platformType}" == "macOS" ]] && macos_prepare || linux_prepare
+11: ==linux_client_variant==
+322:  linux_client_variant
+410:      linux_client_variant
+422:    linux_client_variant
+12: ==linux_deb_prepare==
+343:    linux_deb_prepare
+403:  [[ "${installDeb}" ]] && { linux_deb_prepare; return; }
+13: ==linux_no_client==
+411:    } || linux_no_client
+14: ==linux_resolve_client_path==
+372:  linux_resolve_client_path "/opt/spotify" && return 0
+373:  linux_resolve_client_path "/usr/share/spotify" && return 0
+374:  linux_resolve_client_path "/usr/lib64/spotify-client" && return 0
+375:  linux_resolve_client_path "$HOME/.local/share/spotify-launcher/install/usr/share/spotify" && return 0
+379:    linux_resolve_client_path "${spotifyBinary%/*}" && return 0
+383:    [[ -n "${flatpakPath}" ]] && linux_resolve_client_path "${flatpakPath}" && {
+419:  linux_resolve_client_path "${requestedPath}" && {
+15: ==linux_search_path==
+406:    linux_search_path
+16: ==linux_set_path==
+431:  linux_set_path
+17: ==linux_prepare==
+490:  [[ "${platformType}" == "macOS" ]] && macos_prepare || linux_prepare
+18: ==existing_client_ver==
+504:  existing_client_ver
+19: ==client_version_output==
+507:  client_version_output
+20: ==run_prepare==
+1608:run_prepare
+21: ==check_write_permission==
+714:    check_write_permission "${appPath}" "${appBinary}" "${xpuiPath}" "${xpuiSpa}"
+1153:  check_write_permission "${appPath}" "${appBinary}" "${xpuiPath}" "${xpuiSpa}"
+22: ==sudo_run==
+551:  sudo_run cat -- "${source}" > "${destination}" || {
+591:  tempFile=$(sudo_run mktemp "${destination}.spotx.XXXXXXXX") || return 1
+592:  sudo_run cp -a -- "${reference}" "${tempFile}" &&
+593:    sudo_run chmod u+w -- "${tempFile}" &&
+594:    sudo_run cp -- "${source}" "${tempFile}" &&
+595:    sudo_run chown --reference="${reference}" "${tempFile}" &&
+596:    sudo_run chmod --reference="${reference}" "${tempFile}" &&
+597:    sudo_run touch -r "${reference}" "${tempFile}" || {
+598:      sudo_run rm -f -- "${tempFile}"
+607:  tempFile=$(sudo_run mktemp "${destination}.spotx-rollback.XXXXXXXX") || return 1
+608:  sudo_run cp -a -- "${destination}" "${tempFile}" || {
+609:    sudo_run rm -f -- "${tempFile}"
+617:  [[ "${existed}" ]] && sudo_run mv -f -- "${backup}" "${destination}" || sudo_run rm -f -- "${destination}"
+623:    [[ -n "${file}" ]] && sudo_run rm -f -- "${file}"
+636:    sudo_run rm -f -- "${appFile}"
+643:      sudo_run rm -f -- "${appFile}" "${spaFile}"
+647:      sudo_run rm -f -- "${appFile}" "${spaFile}" "${appBakFile}"
+668:    { [[ "${uninstall}" ]] || sudo_run mv -f -- "${appBakFile}" "${targetAppBak}"; } &&
+669:      { [[ "${uninstall}" ]] || sudo_run mv -f -- "${xpuiBakFile}" "${targetXpuiBak}"; } &&
+670:      sudo_run mv -f -- "${appFile}" "${targetAppBinary}" &&
+671:      sudo_run mv -f -- "${spaFile}" "${targetXpuiSpa}"
+681:  [[ "${uninstall}" ]] && sudo_run rm -f -- "${targetAppBak}" "${targetXpuiBak}"
+720:      [[ "${platformType}" == "Linux" && "${stagedInstall}" ]] && sudo_run rm -f -- "${targetAppBak}" "${targetXpuiBak}"
+23: ==protected_stage_copy==
+583:  protected_stage_copy "${targetAppBinary}" "${appBinary}" || exit 1
+584:  protected_stage_copy "${targetXpuiSpa}" "${xpuiSpa}" || exit 1
+585:  [[ -f "${targetAppBak}" ]] && protected_stage_copy "${targetAppBak}" "${appBak}"
+586:  [[ -f "${targetXpuiBak}" ]] && protected_stage_copy "${targetXpuiBak}" "${xpuiBak}"
+24: ==protected_stage_prepare==
+715:    [[ "${platformType}" == "Linux" && "${stagedInstall}" ]] && protected_stage_prepare
+1154:  [[ "${platformType}" == "Linux" && "${stagedInstall}" ]] && protected_stage_prepare
+25: ==protected_prepare_file==
+634:  appFile=$(protected_prepare_file "${appBinary}" "${targetAppBinary}" "${targetAppBinary}") || return 1
+635:  spaFile=$(protected_prepare_file "${xpuiSpa}" "${targetXpuiSpa}" "${targetXpuiSpa}") || {
+642:    appBakFile=$(protected_prepare_file "${appBak}" "${targetAppBak}" "${appBakReference}") || {
+646:    xpuiBakFile=$(protected_prepare_file "${xpuiBak}" "${targetXpuiBak}" "${xpuiBakReference}") || {
+26: ==protected_save_destination==
+656:    appRollback=$(protected_save_destination "${targetAppBinary}") &&
+657:      spaRollback=$(protected_save_destination "${targetXpuiSpa}")
+659:      appBakRollback=$(protected_save_destination "${targetAppBak}") &&
+660:        xpuiBakRollback=$(protected_save_destination "${targetXpuiBak}")
+27: ==protected_restore_destination==
+673:    protected_restore_destination "${appRollback}" "${targetAppBinary}" "${appExisted}"
+674:    protected_restore_destination "${spaRollback}" "${targetXpuiSpa}" "${spaExisted}"
+675:    [[ "${uninstall}" ]] || protected_restore_destination "${appBakRollback}" "${targetAppBak}" "${appBakExisted}"
+676:    [[ "${uninstall}" ]] || protected_restore_destination "${xpuiBakRollback}" "${targetXpuiBak}" "${xpuiBakExisted}"
+28: ==protected_remove_files==
+663:    protected_remove_files "${appFile}" "${spaFile}" "${appBakFile}" "${xpuiBakFile}"
+664:    protected_remove_files "${appRollback}" "${spaRollback}" "${appBakRollback}" "${xpuiBakRollback}"
+677:    protected_remove_files "${appFile}" "${spaFile}" "${appBakFile}" "${xpuiBakFile}"
+680:  protected_remove_files "${appRollback}" "${spaRollback}" "${appBakRollback}" "${xpuiBakRollback}"
+29: ==protected_commit==
+727:        protected_commit 'true' || {
+1238:  [[ "${platformType}" == "Linux" && "${stagedInstall}" ]] && protected_commit || {
+30: ==atomic_copy==
+697:  atomic_copy "${xpuiSpa}" "${xpuiBak}" && atomic_copy "${appBinary}" "${appBak}" && return 0
+703:  atomic_copy "${appBak}" "${appBinary}" && atomic_copy "${xpuiBak}" "${xpuiSpa}" || return 1
+1034:    { [[ ! -f "${appBak}" ]] || atomic_copy "${appBak}" "${appBinary}"; } &&
+1035:      { [[ ! -f "${xpuiBak}" ]] || atomic_copy "${xpuiBak}" "${xpuiSpa}"; } || {
+31: ==backup_spotx==
+1026:    backup_spotx || {
+1050:  backup_spotx || {
+32: ==uninstall_spotx==
+722:      uninstall_spotx || {
+1099:      uninstall_spotx
+1126:      uninstall_spotx
+1136:        uninstall_spotx
+1215:    uninstall_spotx && \
+1225:    uninstall_spotx && {
+33: ==run_uninstall_check==
+1609:run_uninstall_check
+34: ==perlvar==
+1020:    perlvar "${xpuiSpa}"
+35: ==prepare_interactive_input==
+791:    prepare_interactive_input || exit 1
+36: ==read_yn==
+796:    [[ "${platformType}" == "macOS" && -z "${legacyMac+x}" && -z "${installMac+x}" ]] && { read_yn "Download & install client ${versionVar}? " && { installClient='true'; installMac='true'; }; }
+797:    [[ "${platformType}" == "macOS" ]] && { read_yn "Block client auto-updates? " && blockUpdates='true'; }
+798:    [[ "${platformType}" == "Linux" && -z "${installDeb+x}" && "${notInstalled}" ]] && { read_yn "Download & install client ${downloadVer} deb pkg? " && installDeb='true' clientVer="${downloadVer}" || unset installClient; }
+799:    [[ -d "${cachePath}" ]] && read_yn "Clear client app cache? " && clearCache='true'
+800:    (($(ver "${clientVer}") >= $(ver "1.1.93.896") && $(ver "${clientVer}") <= $(ver "1.2.13.661"))) && { read_yn "Enable new home screen UI? " || oldUi='true'; }
+801:    (($(ver "${clientVer}") > $(ver "1.1.99.878"))) && { read_yn "Enable developer mode? " && devMode='true'; }
+802:    (($(ver "${clientVer}") >= $(ver "1.1.70.610"))) && { read_yn "Hide non-music categories on home screen? " && hideNonMusic='true'; }
+803:    (($(ver "${clientVer}") >= $(ver "1.2.0.1165"))) && { read_yn "Set lyrics background color to black? " && lyricsBg='true'; }
+37: ==run_interactive_check==
+1610:run_interactive_check
+38: ==sudo_check==
+851:  sudo_check
+39: ==cleanup_temp_dirs==
+1605:trap cleanup_temp_dirs EXIT
+40: ==linux_working_dir==
+564:  linux_working_dir
+852:  linux_working_dir
+41: ==linux_deb_install==
+965:    [[ "${installDeb}" ]] && linux_deb_install
+42: ==macos_client_install==
+966:    [[ "${installMac}" ]] && macos_client_install
+43: ==run_install_check==
+1611:run_install_check
+44: ==macos_codesign==
+1245:    macos_codesign
+45: ==run_cache_check==
+1612:run_cache_check
+46: ==final_setup_check==
+1152:  final_setup_check
+47: ==perlVar==
+739:  { local e; e=$($perlVar 'BEGIN { $m = 0; $c = 0 } $c += s&'"${a[1]}"'&'"${a[2]}"'&'"${a[3]}"' and $m = 1; END { print "$m,$c" }' "${p}")
+1162:  perlVar "${aoEx[@]}"
+1163:  perlVar "${naEx[@]}"
+1165:    perlVar "${freeEx[@]}"
+1170:    perlVar "${devEx[@]}"
+1174:    perlVar "${expEx[@]}"
+1175:    [[ "${paidPremium}" ]] && perlVar "${premiumExpEx[@]}"
+1176:    [[ -z "${hideNonMusic+x}" ]] && $perlVar 's|Enable Subfeed filter chips on home",default:\K!1|true|s' "${xpuiJs}" #enableHomeSubfeeds 1.2.20.1210
+1180:    perlVar "${oldUiEx[@]}"
+1188:    perlVar "${newUiEx[@]}"
+1192:    perlVar "${podEx[@]}"
+1198:      perlVar "${lyricsBgEx[@]}"
+1206:    perlVar "${updatesEx[@]}"
+1249:perlVar="perl -0777pi -w -e"
+48: ==xpui_detect==
+1155:  xpui_detect
+49: ==snapshot_check==
+1122:  snapshot_check
+50: ==xpui_open==
+1157:  xpui_open
+51: ==run_core_start==
+1613:run_core_start
+52: ==run_patches==
+1614:run_patches
+53: ==run_finish==
+1615:run_finish
+#+end_example
+
+трассировка:
+#+begin_src shell
+echo $PS4
+#+end_src
+
+#+RESULTS:
+: +%N:%i>
+
+Вот такой вариант
+#+begin_src shell
+export PS4='+ ${BASH_SOURCE##*/}:${LINENO}:${FUNCNAME[0]:-main}: '
+#+end_src
+
+
+#+begin_src shell :results output :shebang "#!/opt/homebrew/bin/bash" :prologue "exec 2>&1"
+set -x
+name="Hakcer"
+greet() {
+    echo "Hello, $name"
+}
+greet
+#+end_src
+
+#+RESULTS:
+: + name=Hakcer
+: + greet
+: + echo 'Hello, Hakcer'
+: Hello, Hakcer
+
+
+#+begin_src shell :results output :shebang "#!/opt/homebrew/bin/bash" :prologue "exec 2>&1"
+set -x
+PS4='+ ${BASH_SOURCE##*/}:${LINENO}:${FUNCNAME[0]:-main}: '
+name="Hakcer"
+greet() {
+    echo "Hello, $name"
+}
+greet
+#+end_src
+
+#+RESULTS:
+: + PS4='+ ${BASH_SOURCE##*/}:${LINENO}:${FUNCNAME[0]:-main}: '
+: + sh-script-cXvP6z:6:main: name=Hakcer
+: + sh-script-cXvP6z:10:main: greet
+: + sh-script-cXvP6z:8:greet: echo 'Hello, Hakcer'
+: Hello, Hakcer
+
+** Шимы :shim:
+
+#+begin_src shell
+mkdir -p ~/Work/Analysis/Case/shims
+for c in curl wget sudo pkill codesign xattr dpkg apt apt-get flatpak snap; do
+  printf '#!/bin/sh\necho "[SHIM] %s $*" >> ~/Work/Analysis/Case/shims/shim.log\nexit 0\n' "$c" > "$c"
+  chmod +x "$c"
+done
+#+end_src
+
+
+* results
+Ответы на вопросы:
+eval встроенная команда которая выполняет подсчет на лету а не вызывается, ее нельзя заменить на другую внешнюю команду, но можно подменить ее саму в копии семпла
+Вызовы функции находятся после данных и структура не нарушается. Даже если определении раньше
