@@ -2,6 +2,8 @@
 
 * prerq: [[https://www.shellcheck.net/][shellcheck]], [[https://github.com/patrickvane/shfmt][shfmt]]
 * стрим настроек :bash:
+
+** Базовый анализ
 #+begin_src shell :results output :prologue "exec 2>&1"
 shasum -a 256 sample.sh
 wc -l sample.sh
@@ -13,65 +15,34 @@ bash -n sample.sh && echo "syntax"
 :     1618 sample.sh
 : syntax
 
+** Список функций
 #+begin_src shell :results output :prologue "exec 2>&1"
-rg -n '^[a-zA-Z_][a-zA-Z0-9_]*\(\) *\{' sample.sh
+output_str_num=$(rg -n '^[a-zA-Z_][a-zA-Z0-9_]*\(\) *\{' sample.sh)
+output_str=$(rg -o '^[a-zA-Z_][a-zA-Z0-9_]*\(\) *\{' sample.sh)
+output_num=$(rg -c '^[a-zA-Z_][a-zA-Z0-9_]*\(\) *\{' sample.sh)
+echo "All: $output_num"
+
+echo "Mac func:"
+while IFS= read -r str; do
+    if [[ "${str%%_*}" == "macos" ]]; then
+        echo "  $str"
+    fi
+done <<< "$output_str"
 #+end_src
 
 #+RESULTS:
 #+begin_example
-27:show_help() {
-167:ver() { echo "$@" | perl -lane 'printf "%d%03d%04d%05d\n", split(/\./, $_), (0)x4'; }
-168:ver_check() { (($(ver "${sxbVer}") > $(ver "1.1.0.0") && $(ver "${sxbVer}") < $(ver "${sxbLive}"))) && echo -e "${verCk2}"; }
-184:macos_requirements_check() {
-197:macos_set_version() {
-209:macos_legacy_notice() {
-216:macos_set_path() {
-242:macos_autoupdate_check() {
-250:macos_client_arch() {
-264:macos_prepare() {
-300:linux_client_variant() {
-318:linux_deb_prepare() {
-336:linux_no_client() {
-352:linux_resolve_client_path() {
-369:linux_search_path() {
-401:linux_set_path() {
-429:linux_prepare() {
-445:existing_client_ver() {
-465:client_version_output() {
-489:run_prepare() {
-513:check_write_permission() {
-541:sudo_run() {
-549:protected_stage_copy() {
-558:protected_stage_prepare() {
-589:protected_prepare_file() {
-604:protected_save_destination() {
-615:protected_restore_destination() {
-620:protected_remove_files() {
-627:protected_commit() {
-685:atomic_copy() {
-696:backup_spotx() {
-702:uninstall_spotx() {
-708:run_uninstall_check() {
-738:perlvar() {
-750:prepare_interactive_input() {
-773:read_yn() {
-789:run_interactive_check() {
-808:sudo_check() {
-822:cleanup_temp_dirs() {
-836:linux_working_dir() {
-850:linux_deb_install() {
-893:macos_client_install() {
-963:run_install_check() {
-970:macos_codesign() {
-984:run_cache_check() {
-997:final_setup_check() {
-1005:perlVar() {
-1024:xpui_detect() {
-1057:snapshot_check() {
-1109:xpui_open() {
-1151:run_core_start() {
-1161:run_patches() {
-1211:run_finish() {
+All: 53
+Mac func:
+  macos_requirements_check() {
+  macos_set_version() {
+  macos_legacy_notice() {
+  macos_set_path() {
+  macos_autoupdate_check() {
+  macos_client_arch() {
+  macos_prepare() {
+  macos_client_install() {
+  macos_codesign() {
 #+end_example
 
 #+begin_src shell :results output :prologue "exec 2>&1"
@@ -304,7 +275,7 @@ done
 1615:run_finish
 #+end_example
 
-трассировка:
+** Трассировка:
 #+begin_src shell
 echo $PS4
 #+end_src
@@ -356,13 +327,23 @@ greet
 #+begin_src shell
 mkdir -p ~/Work/Analysis/Case/shims
 for c in curl wget sudo pkill codesign xattr dpkg apt apt-get flatpak snap; do
-  printf '#!/bin/sh\necho "[SHIM] %s $*" >> ~/Work/Analysis/Case/shims/shim.log\nexit 0\n' "$c" > "$c"
+  printf '#!/bin/sh\necho "[SHIM] %s $*" >> $HOME/Work/Analysis/Case/shims/shim.log\nexit 0\n' "$c" > "$c"
   chmod +x "$c"
 done
 #+end_src
 
+#+begin_src shell
+perl -pe 's/\beval\b/echo "[EVAL]"/g' sample.sh > sample_neutered.sh
+#+end_src
 
-* results
-Ответы на вопросы:
-eval встроенная команда которая выполняет подсчет на лету а не вызывается, ее нельзя заменить на другую внешнюю команду, но можно подменить ее саму в копии семпла
-Вызовы функции находятся после данных и структура не нарушается. Даже если определении раньше
+Bash ищет команду в таком порядке: alias → функция → builtin → PATH
+
+* Начало
+command -v perl (может завершить скрипт);
+uname → platformType;
+getopts-цикл, затем проверка конфликта --interactive и --noninteractive;
+декодирование gVer, sxbLiveVer, verCk через rev | base64 -d | base64 -d;
+eval декодированных строк (sxbLive, verCk2), если не задан SPOTX_BUILD_MODE;
+определение ver/ver_check, выход по -v.
+
+>> [[file:Module_1.org][Module_1]]
